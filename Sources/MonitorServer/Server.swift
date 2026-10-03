@@ -201,7 +201,8 @@ public final class MonitorHTTPServer: @unchecked Sendable {
         guard !lan else { throw APIError(403, "loopbackRequired") }
         let result = try await auth.setup(
           ticket: r.body["setupTicket"].string ?? "", username: r.body["username"].string ?? "",
-          password: r.body["password"].string ?? "", ip: r.ip)
+          password: r.body["password"].string ?? "", ip: r.ip,
+          localFirstRun: (r.body["setupTicket"].string ?? "").isEmpty)
         return try .json(
           .object(["csrfToken": .string(result.csrf), "expiresAt": .date(result.expiresAt)]),
           status: 201, headers: [cookie(cookieName, result.token, 43200)])

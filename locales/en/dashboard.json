@@ -28,5 +28,16 @@
   "serious": "Serious",
   "critical": "Critical",
   "overhead": "Monitor overhead",
-  "source": "Source: {source}"
+  "source": "Source: {source}",
+  "cpuTemperature": "CPU",
+  "gpuTemperature": "Graphics",
+  "storageTemperature": "Drives",
+  "highestReading": "Highest reading",
+  "ringScale": "Rings show temperature on a 0–100 °C scale, not utilization or a safety rating.",
+  "externalDrive": "External drive",
+  "internalDrive": "Internal drive",
+  "driveUnavailable": "Temperature is not exposed by this device or connection.",
+  "noSensors": "No readable temperature sensors.",
+  "sensorDetails": "Sensor details",
+  "rawSensor": "Sensor {id}"
 }

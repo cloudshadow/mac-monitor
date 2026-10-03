@@ -660,6 +660,94 @@
           }
         }
       }
+    },
+    "refreshHelp": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refresh the monitor address, network interfaces, and recording status. This does not restart the service."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新查询监测地址、网络接口和记录状态，不会重启服务。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新查詢監測位址、網路介面和記錄狀態，不會重新啟動服務。"
+          }
+        }
+      }
+    },
+    "lanInterface": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local network interface"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "局域网接口"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "區域網路介面"
+          }
+        }
+      }
+    },
+    "lanHelp": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "For phones and other computers on the same network: choose an interface, enable LAN, then create a pairing code. Local monitoring works with LAN disabled."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "供同一网络的手机或其他电脑访问：选择接口，开启局域网，再生成配对码。本机监测无需开启局域网。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "供同一網路的手機或其他電腦存取：選擇介面，開啟區域網路，再產生配對碼。本機監測無需開啟區域網路。"
+          }
+        }
+      }
+    },
+    "disableLAN": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disable LAN"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭局域网"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "關閉區域網路"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

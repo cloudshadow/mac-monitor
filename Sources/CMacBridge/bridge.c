@@ -7,6 +7,7 @@
 #include <IOKit/IOKitLib.h>
 #include <errno.h>
 #include <limits.h>
+#include <stdio.h>
 #include <string.h>
 
 int cmm_read_system(cmm_system_sample *s) {
@@ -258,4 +259,96 @@ void cmm_watch_power(void *context,cmm_power_callback callback) {
     CFRunLoopAddSource(CFRunLoopGetCurrent(),IONotificationPortGetRunLoopSource(port),kCFRunLoopDefaultMode);
     CFRunLoopRun();
     IODeregisterForSystemPower(&notifier); IOServiceClose(observer.root); IONotificationPortDestroy(port);
+}
+
+#include <IOKit/IOCFPlugIn.h>
+#include <IOKit/storage/ata/ATASMARTLib.h>
+#include <IOKit/storage/nvme/NVMeSMARTLibExternal.h>
+
+/* Read a checksummed ATA SMART page, using only temperature attribute 194.
+ * Do not enable SMART, start tests, write logs, or change drive power state. */
+int cmm_ata_temperature(const uint8_t *data, size_t length, double *value) {
+    if (!data || !value || length != 512) return EINVAL;
+    unsigned sum = 0;
+    for (size_t i = 0; i < length; i++) sum += data[i];
+    if ((sum & 255) != 0) return EIO;
+    for (size_t offset = 2; offset + 12 <= 362; offset += 12) {
+        if (data[offset] == 194) {
+            double celsius = data[offset + 5];
+            if (celsius < 1 || celsius > 130) return EIO;
+            *value = celsius; return 0;
+        }
+    }
+    return ENOTSUP;
+}
+static int cmm_smart_temperature(io_service_t service, int nvme, double *value) {
+    IOCFPlugInInterface **plugin = NULL; SInt32 score = 0;
+    IOReturn code = IOCreatePlugInInterfaceForService(service,
+        nvme ? kIONVMeSMARTUserClientTypeID : kIOATASMARTUserClientTypeID,
+        kIOCFPlugInInterfaceID, &plugin, &score);
+    if (code != kIOReturnSuccess || !plugin)
+        return code == kIOReturnNotPrivileged || code == kIOReturnNotPermitted ? EACCES : ENOTSUP;
+    int result = ENOTSUP;
+    if (nvme) {
+        IONVMeSMARTInterface **smart = NULL;
+        HRESULT query = (*plugin)->QueryInterface(plugin, CFUUIDGetUUIDBytes(kIONVMeSMARTInterfaceID), (void **)&smart);
+        if (query == S_OK && smart) {
+            NVMeSMARTData page = {0}; code = (*smart)->SMARTReadData(smart, &page);
+            if (code == kIOReturnSuccess) {
+                const uint8_t *bytes = (const uint8_t *)&page;
+                double celsius = (bytes[1] | (bytes[2] << 8)) - 273.15;
+                if (isfinite(celsius) && celsius >= -20 && celsius <= 130) { *value = celsius; result = 0; }
+                else result = EIO;
+            } else result = code == kIOReturnNotPrivileged || code == kIOReturnNotPermitted ? EACCES : EIO;
+            (*smart)->Release(smart);
+        }
+    } else {
+        IOATASMARTInterface **smart = NULL;
+        HRESULT query = (*plugin)->QueryInterface(plugin, CFUUIDGetUUIDBytes(kIOATASMARTInterfaceID), (void **)&smart);
+        if (query == S_OK && smart) {
+            ATASMARTData page = {0}; code = (*smart)->SMARTReadData(smart, &page);
+            result = code == kIOReturnSuccess ? cmm_ata_temperature((const uint8_t *)&page, sizeof(page), value) :
+                code == kIOReturnNotPrivileged || code == kIOReturnNotPermitted ? EACCES : EIO;
+            (*smart)->Release(smart);
+        }
+    }
+    IODestroyPlugInInterface(plugin); return result;
+}
+static void cmm_disk_string(CFDictionaryRef dictionary, CFStringRef key, char *out, size_t size) {
+    CFTypeRef value = dictionary ? CFDictionaryGetValue(dictionary, key) : NULL;
+    if (value && CFGetTypeID(value) == CFStringGetTypeID()) CFStringGetCString(value, out, size, kCFStringEncodingUTF8);
+}
+int cmm_disk_temperatures(cmm_disk_temperature *values, size_t capacity) {
+    if (!values || capacity > 32) return -EINVAL;
+    io_iterator_t iterator = 0;
+    if (IOServiceGetMatchingServices(kIOMainPortDefault, IOServiceMatching("IOBlockStorageDevice"), &iterator)) return -EIO;
+    io_service_t service; int count = 0;
+    while (count < (int)capacity && (service = IOIteratorNext(iterator))) {
+        cmm_disk_temperature *reading = &values[count]; memset(reading, 0, sizeof(*reading));
+        CFTypeRef characteristics = IORegistryEntryCreateCFProperty(service, CFSTR("Device Characteristics"), NULL, 0);
+        if (characteristics && CFGetTypeID(characteristics) == CFDictionaryGetTypeID()) {
+            cmm_disk_string(characteristics, CFSTR("Product Name"), reading->name, sizeof(reading->name));
+            cmm_disk_string(characteristics, CFSTR("Serial Number"), reading->id, sizeof(reading->id));
+        }
+        if (characteristics) CFRelease(characteristics);
+        if (!reading->name[0]) IORegistryEntryGetName(service, reading->name);
+        if (!reading->id[0]) {
+            CFTypeRef bsd = IORegistryEntrySearchCFProperty(service, kIOServicePlane, CFSTR("BSD Name"), NULL, kIORegistryIterateRecursively);
+            if (bsd && CFGetTypeID(bsd) == CFStringGetTypeID()) CFStringGetCString(bsd, reading->id, sizeof(reading->id), kCFStringEncodingUTF8);
+            if (bsd) CFRelease(bsd);
+        }
+        if (!reading->id[0]) { uint64_t id = 0; IORegistryEntryGetRegistryEntryID(service, &id); snprintf(reading->id, sizeof(reading->id), "%llu", (unsigned long long)id); }
+        CFTypeRef protocol = IORegistryEntryCreateCFProperty(service, CFSTR("Protocol Characteristics"), NULL, 0);
+        char location[64] = {0};
+        if (protocol && CFGetTypeID(protocol) == CFDictionaryGetTypeID()) cmm_disk_string(protocol, CFSTR("Physical Interconnect Location"), location, sizeof(location));
+        if (protocol) CFRelease(protocol);
+        reading->external = strcmp(location, "External") == 0;
+        CFTypeRef nvme = IORegistryEntryCreateCFProperty(service, CFSTR(kIOPropertyNVMeSMARTCapableKey), NULL, 0);
+        CFTypeRef ata = IORegistryEntryCreateCFProperty(service, CFSTR("SMART Capable"), NULL, 0);
+        int hasNVMe = nvme && CFEqual(nvme, kCFBooleanTrue), hasATA = ata && CFEqual(ata, kCFBooleanTrue);
+        reading->status = hasNVMe || hasATA ? cmm_smart_temperature(service, hasNVMe, &reading->celsius) : ENOTSUP;
+        if (nvme) CFRelease(nvme); if (ata) CFRelease(ata);
+        IOObjectRelease(service); count++;
+    }
+    IOObjectRelease(iterator); return count;
 }

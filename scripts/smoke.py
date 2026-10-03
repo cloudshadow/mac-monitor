@@ -30,8 +30,10 @@ with tempfile.TemporaryDirectory(prefix='cmm-smoke.',dir='/private/tmp') as data
         request('/healthz',headers={'Host':'evil.test'},expected=403)
         request('/api/v1/auth/login','POST',{'username':'owner','password':'not-a-valid-password'},origin=False,expected=403)
         request('/api/v1/auth/login','POST',{},headers={'Origin':'null'},expected=403)
-        ticket=urllib.parse.parse_qs(urllib.parse.urlsplit(control('setup')['url']).fragment)['setup'][0]
-        result=request('/api/v1/auth/setup','POST',{'setupTicket':ticket,'username':'owner','password':'test-password-12345'},expected=201);csrf=result['csrfToken']
+        request('/api/v1/auth/setup','POST',{'username':'owner','password':'test-password-12345'},origin=False,expected=403)
+        request('/api/v1/auth/setup','POST',{'username':'owner','password':'test-password-12345'},headers={'Origin':'http://evil.example'},expected=403)
+        result=request('/api/v1/auth/setup','POST',{'username':'owner','password':'test-password-12345'},expected=201);csrf=result['csrfToken']
+        request('/api/v1/auth/setup','POST',{'username':'second','password':'test-password-12345'},expected=409)
         assert request('/api/v1/auth/session',origin=False)['csrfToken']==csrf
         time.sleep(5)
         snapshot=request('/api/v1/snapshot',origin=False);assert snapshot['cpu']['status']=='ok',snapshot

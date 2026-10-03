@@ -2,12 +2,12 @@ import { useEffect, useState } from "react";
 import { useI18n, errorMessage } from "../i18n";
 import { useMetrics } from "../store/metrics";
 import { api, APIError } from "../store/api";
+import { Temperatures } from "../components/Temperatures";
 import { TimeSeries, type Point } from "../components/TimeSeries";
 export function Overview() {
   const { t, number, date } = useI18n(),
     { snapshot, receivedAt } = useMetrics(),
     [points, setPoints] = useState<Point[]>([]),
-    [selectedSensor, setSelectedSensor] = useState(""),
     [error, setError] = useState("");
   useEffect(() => {
     setPoints([]);
@@ -44,21 +44,13 @@ export function Overview() {
     ["dashboard:cpu", "cpu", "%"],
     ["dashboard:memory", "nonIdlePercent", "%"],
     ["dashboard:swap", "swapUsedBytes", "bytes"],
-    ["dashboard:temperature", "temperature", "°C"],
     ["dashboard:gpu", "gpu", "%"],
   ] as const;
   return (
     <>
       <div className="grid">
         {metrics.map(([label, key, unit]) => {
-          const metric =
-              key === "temperature" && selectedSensor
-                ? snapshot.sensors?.find(
-                    (sensor: Record<string, any>) =>
-                      sensor.id === selectedSensor,
-                  )?.metric
-                : snapshot[key],
-            value = metric?.value;
+          const metric = snapshot[key], value = metric?.value;
           return (
             <section className="card metric" key={key}>
               <h2>{t(label)}</h2>
@@ -79,22 +71,8 @@ export function Overview() {
           );
         })}
       </div>
+      <Temperatures sensors={snapshot.sensors} />
       <section className="card">
-        <label>
-          {t("dashboard:sensor")}
-          <select
-            value={selectedSensor}
-            onChange={(e) => setSelectedSensor(e.target.value)}
-          >
-            <option value="">{t("common:unknown")}</option>
-            {snapshot.sensors?.map((sensor: Record<string, any>) => (
-              <option key={sensor.id} value={sensor.id}>
-                {sensor.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <p>{t("dashboard:sensorBoundary")}</p>
         <p>
           {t("dashboard:thermal")}:{" "}
           {t(

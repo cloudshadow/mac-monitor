@@ -28,5 +28,9 @@
   "deleteData": "解除安裝時刪除已儲存的帳戶、歷史及 TLS 資料",
   "serviceState": "開機偏好 {boot} · 系統啟用 {system} · 已載入 {loaded} · 執行中 {running}",
   "yes": "是",
-  "no": "否"
+  "no": "否",
+  "refreshHelp": "重新查詢監測位址、網路介面和記錄狀態，不會重新啟動服務。",
+  "lanInterface": "區域網路介面",
+  "lanHelp": "供同一網路的手機或其他電腦存取：選擇介面，開啟區域網路，再產生配對碼。本機監測無需開啟區域網路。",
+  "disableLAN": "關閉區域網路"
 }

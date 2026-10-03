@@ -63,6 +63,17 @@ export interface MessageParameters {
   "dashboard:critical": {};
   "dashboard:overhead": {};
   "dashboard:source": {"source": string};
+  "dashboard:cpuTemperature": {};
+  "dashboard:gpuTemperature": {};
+  "dashboard:storageTemperature": {};
+  "dashboard:highestReading": {};
+  "dashboard:ringScale": {};
+  "dashboard:externalDrive": {};
+  "dashboard:internalDrive": {};
+  "dashboard:driveUnavailable": {};
+  "dashboard:noSensors": {};
+  "dashboard:sensorDetails": {};
+  "dashboard:rawSensor": {"id": string};
   "errors:invalidCredentials": {};
   "errors:invalidCredentialsFormat": {};
   "errors:setupTicketInvalid": {};
@@ -143,6 +154,10 @@ export interface MessageParameters {
   "native:serviceState": {"boot": string;"loaded": string;"running": string;"system": string};
   "native:yes": {};
   "native:no": {};
+  "native:refreshHelp": {};
+  "native:lanInterface": {};
+  "native:lanHelp": {};
+  "native:disableLAN": {};
   "pairing:title": {};
   "pairing:label": {};
   "pairing:submit": {};

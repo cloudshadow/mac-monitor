@@ -49,7 +49,7 @@ Read-only `launchctl print-disabled system` inspection on macOS 15.7.9 returned 
 使用 `scripts/package-app.sh` 生成对应架构包和哈希，或使用交付的 arm64 包。可通过 README 的 `install.sh VERSION --local ARCHIVE SHA256` 入口验收，无需预先发布到 GitHub。安装器尚未在此会话以管理员运行，没有注册真实后台任务。原生控制端、维护工具、plist 和 root 暂存安装/升级代码已落地；以下仍是待验收：
 
 1. 检查 /Applications、/Library/Application Support 和 /Library/LaunchDaemons 的所有权与可写性；实际程序及服务父路径保持 root 保护；/Applications 仅放置入口链接，允许系统默认 root:admin 775，不擅自 chmod 系统目录。
-2. 校验包/哈希，首次 sudo 安装默认启用普通 UID system 任务；打开控制窗口创建唯一账户。检查 UID 和 GeneratedUID 绑定、root 文件及数据 0700/数据库 0600。
+2. 校验包/哈希，首次 sudo 安装默认启用普通 UID system 任务；打开本机网页直接创建唯一账户。检查 UID 和 GeneratedUID 绑定、root 文件及数据 0700/数据库 0600。
 3. 图形 enable/start/disable/stop 的授权成功和取消；disable 保留本次运行，stop 先 prepareStop 后 bootout，不应被 KeepAlive 拉起。连续短期失败由启动熔断停止；明确 enable 可清除熔断。
 4. 关闭自启动后升级必须保持关闭；已启用但未运行保持未运行。已启用且运行的升级恢复运行；关闭但仍在运行的升级停机后保持关闭。bootout/启动失败应保留事务信息与上一版包，不能报伪成功。
 5. 验证登录前、用户注销后及钥匙串未解锁仍采集；FileVault 未解锁阶段另记录。睡眠/唤醒和网络地址变化后基线/证书/地址更新。

@@ -137,3 +137,12 @@ Setup（G0/G4真机验收延至发行前） → Foundation → 账户认证 → 
 - T047/T048：覆盖表、兼容边界、性能/安装步骤和发行清单已整理；quickstart 的目标机完整验收与发行门槛保持未勾选。
 
 交付位置、自动证据与真机顺序见 `docs/implementation-status.md`。未勾选项明确表示尚未完成其全部验收范围，不代表阻止继续软件实现。
+
+## 2026-10-03 usability revision
+
+- [x] T049 Replace the temperature selector with named °C readings, CPU/graphics/drive peak rings, raw-ID details, and a layout checked at 360px.
+- [x] T050 Discover internal/external storage and read available ATA/NVMe SMART temperatures without privileged writes; cache for 60 seconds and show unsupported/denied readings explicitly.
+- [x] T051 Allow direct first-account creation from the same-origin loopback page; preserve atomic uniqueness, damaged-state refusal, and LAN rejection. Cover first access with browser and HTTP tests.
+- [x] T052 Explain refresh status and LAN interface selection in all three control-window languages; remove the separate account-creation button.
+
+External enclosure temperature availability and target-Mac GUI/hardware acceptance remain user validation tasks.

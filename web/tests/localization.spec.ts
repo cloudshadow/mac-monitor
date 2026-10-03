@@ -1,26 +1,8 @@
 import { test, expect } from "@playwright/test";
 import { spawn, type ChildProcess } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
-import { createConnection } from "node:net";
 import path from "node:path";
 let process: ChildProcess, base: string, root: string;
-async function control(command: string): Promise<any> {
-  return new Promise((resolve, reject) => {
-    const socket = createConnection(root + "/run/control.sock");
-    let data = "";
-    socket.on("connect", () =>
-      socket.write(JSON.stringify({ command }) + "\n"),
-    );
-    socket.on("data", (chunk) => {
-      data += chunk;
-      if (data.endsWith("\n")) {
-        socket.end();
-        resolve(JSON.parse(data));
-      }
-    });
-    socket.on("error", reject);
-  });
-}
 test.beforeAll(async () => {
   root = mkdtempSync("/private/tmp/cmm-browser.");
   const project = path.resolve("..");
@@ -56,8 +38,8 @@ test("three languages preserve credentials and use one event stream", async ({
   page.on("request", (request) => {
     if (request.url().includes("/events?")) streams.add(request.url());
   });
-  const ticket = await control("setup");
-  await page.goto(ticket.url);
+  await page.goto(base);
+  await expect(page.getByRole("heading", { name: "Create your account", exact: true })).toBeVisible();
   await page.getByLabel("Username", { exact: true }).fill("browser-owner");
   await page
     .getByLabel("Password (12–128 characters)", { exact: true })
@@ -99,4 +81,34 @@ test("three languages preserve credentials and use one event stream", async ({
   await expect(
     page.getByRole("heading", { name: "Sign in", exact: true }),
   ).toBeVisible();
+});
+
+test("temperature readings and unavailable external drives fit a phone", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  const sensors = [
+    { id: "hid:CPU Performance Cores", label: "CPU Performance Cores", metric: { value: 58.3, status: "ok" } },
+    { id: "hid:Graphics", label: "Graphics", metric: { value: 55.1, status: "ok" } },
+    { id: "disk:internal", label: "APPLE SSD AP0512Z", category: "storage", external: false, metric: { value: 45, status: "ok" } },
+    { id: "disk:external", label: "SOLIDIGM SSDPFKKW010X7", category: "storage", external: true, metric: { status: "unsupported" } },
+    { id: "smc:Tp09", label: "Tp09", metric: { value: 59, status: "ok" } },
+  ];
+  await page.route("**/api/v1/**", async route => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith("/events")) { await route.abort(); return; }
+    const body = url.pathname.endsWith("/auth/status") ? { status: "authenticated" }
+      : url.pathname.endsWith("/auth/session") ? { csrfToken: "fixture" }
+      : url.pathname.endsWith("/snapshot") ? { sensors, thermalState: 0 }
+      : url.pathname.endsWith("/viewers") ? { viewerId: "fixture" }
+      : url.pathname.endsWith("/recent/system") ? { series: { "cpu.total": [] } } : {};
+    await route.fulfill({ json: body });
+  });
+  await page.goto(base);
+  await expect(page.locator(".temperature-list li")).toHaveCount(5);
+  await expect(page.locator(".temperature-list")).toContainText("58.3 °C");
+  await expect(page.locator(".temperature-list")).toContainText("External drive");
+  await expect(page.locator(".temperature-list")).toContainText("Temperature is not exposed");
+  await expect(page.locator(".temperature-summary")).toContainText("58.3 °C");
+  await expect(page.locator(".temperature-summary")).not.toContainText("59 °C");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
+  await page.locator(".temperature-panel").screenshot({ path: "../artifacts/temperature-phone.png" });
 });

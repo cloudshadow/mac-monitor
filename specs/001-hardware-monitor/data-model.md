@@ -66,7 +66,7 @@ ApplicationPage：`bootId / scanSequence / sampledAt / rows / coverage / nextCur
 - DeviceGrant（state.sqlite）：`id / label / tokenHash / createdAt / expiresAt / revokedAt`；30天有效，仅说明设备已配对。
 - AccountSession（内存）：`sessionId / tokenHash / accountId / authEpoch / deviceGrantId|null / createdAt / expiresAt / csrfTokenHash`；12小时有效，重启失效。LAN必须绑定当前有效DeviceGrant；本机loopback会话使用独立cookie。
 - PairingTicket（内存）：128-bit随机秘密仅在创建时返回，服务端存散列、5分钟有效、一次使用。
-- SetupTicket（内存）：绑定的服务所有者UID本机控制通道签发，5分钟有效、一次使用，仅在Account不存在时可创建；与配对票据用途隔离。
+- SetupTicket（内存，兼容原生控制端入口；本机首次网页开户不要求票据）：绑定的服务所有者UID本机控制通道签发，5分钟有效、一次使用，仅在Account不存在时可创建；与配对票据用途隔离。
 
 状态流：uninitialized → setupInProgress → ready；创建事务失败回到uninitialized并允许本机重试，存在但损坏的状态库进入recoveryRequired，不能当成不存在。密码变化撤销全部AccountSession，设备撤销使绑定的会话/流失效；故障历史库不改变账户状态。
 

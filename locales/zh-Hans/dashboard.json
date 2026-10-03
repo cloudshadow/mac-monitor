@@ -28,5 +28,16 @@
   "serious": "较高",
   "critical": "严重",
   "overhead": "监测自身开销",
-  "source": "来源：{source}"
+  "source": "来源：{source}",
+  "cpuTemperature": "CPU",
+  "gpuTemperature": "图形芯片",
+  "storageTemperature": "硬盘",
+  "highestReading": "最高读数",
+  "ringScale": "圆环按 0–100 °C 显示温度，不代表使用率或安全等级。",
+  "externalDrive": "外接硬盘",
+  "internalDrive": "内置硬盘",
+  "driveUnavailable": "此设备或连接方式未提供温度读数。",
+  "noSensors": "没有可读取的温度传感器。",
+  "sensorDetails": "传感器详情",
+  "rawSensor": "传感器 {id}"
 }

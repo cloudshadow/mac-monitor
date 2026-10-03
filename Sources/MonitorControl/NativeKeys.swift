@@ -31,4 +31,8 @@ enum NativeKeys {
     static func serviceState(boot: String, loaded: String, running: String, system: String) -> String { NativeLocalization.text("serviceState", parameters: ["boot": boot, "loaded": loaded, "running": running, "system": system]) }
     static func yes() -> String { NativeLocalization.text("yes", parameters: [:]) }
     static func no() -> String { NativeLocalization.text("no", parameters: [:]) }
+    static func refreshHelp() -> String { NativeLocalization.text("refreshHelp", parameters: [:]) }
+    static func lanInterface() -> String { NativeLocalization.text("lanInterface", parameters: [:]) }
+    static func lanHelp() -> String { NativeLocalization.text("lanHelp", parameters: [:]) }
+    static func disableLAN() -> String { NativeLocalization.text("disableLAN", parameters: [:]) }
 }

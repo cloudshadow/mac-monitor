@@ -28,5 +28,16 @@
   "serious": "較高",
   "critical": "嚴重",
   "overhead": "監測本身耗用",
-  "source": "來源：{source}"
+  "source": "來源：{source}",
+  "cpuTemperature": "CPU",
+  "gpuTemperature": "圖形晶片",
+  "storageTemperature": "硬碟",
+  "highestReading": "最高讀數",
+  "ringScale": "圓環按 0–100 °C 顯示溫度，不代表使用率或安全等級。",
+  "externalDrive": "外接硬碟",
+  "internalDrive": "內置硬碟",
+  "driveUnavailable": "此裝置或連線方式未提供溫度讀數。",
+  "noSensors": "沒有可讀取的溫度感測器。",
+  "sensorDetails": "感測器詳情",
+  "rawSensor": "感測器 {id}"
 }

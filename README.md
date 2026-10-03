@@ -6,20 +6,20 @@ The software implementation and development-machine checks are complete. Apple S
 
 ## Install the prerelease
 
-Use [v0.1.1](https://github.com/cloudshadow/mac-monitor/releases/tag/v0.1.1). The v0.1.0 installer rejected normal `/Applications` permissions and could exit before installing anything. Run the following commands using the intended ordinary service-owner account. They select the archive for Apple Silicon or Intel and verify the installer and archive checksums:
+Use [v0.1.2](https://github.com/cloudshadow/mac-monitor/releases/tag/v0.1.2). The v0.1.0 installer rejected normal `/Applications` permissions and could exit before installing anything. Run the following commands using the intended ordinary service-owner account. They select the archive for Apple Silicon or Intel and verify the installer and archive checksums:
 
 ```bash
 (
   set -e
   cd "$HOME"
-  curl -fL https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.1/install.sh -o install-0.1.1.sh
-  echo "a9ae11d1b5b3590756d3e77c1fa66e32d668f7fb2209c07283ee8a61685c0f13  install-0.1.1.sh" | shasum -a 256 -c -
+  curl -fL https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.2/install.sh -o install-0.1.2.sh
+  echo "a9ae11d1b5b3590756d3e77c1fa66e32d668f7fb2209c07283ee8a61685c0f13  install-0.1.2.sh" | shasum -a 256 -c -
   case "$(uname -m)" in
-    arm64) checksum=f796eff07e4ed5e51caeec2eb4e1090ce73464c1ac77a3c8f6a050d0ba2bc706 ;;
-    x86_64) checksum=e33e15248c0a1383b46c07094f4b5ff9d69b4a92a4e93e6006242a83720d5783 ;;
+    arm64) checksum=0b2b4bbc3bd8db18271ac0db14d5792dbb5d1d0a0bd04dcd8d7af2fb20a76a39 ;;
+    x86_64) checksum=96005a41dc565b13529874ddc808eb69cc7916a446fc4a1f477bc7ae8fdc4cbb ;;
     *) echo "Unsupported architecture"; exit 1 ;;
   esac
-  bash install-0.1.1.sh 0.1.1 https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.1 "$checksum"
+  bash install-0.1.2.sh 0.1.2 https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.2 "$checksum"
 )
 ```
 
@@ -29,7 +29,7 @@ Review the installer before running it. Downloads run without administrator priv
 open "/Applications/Cloud Mac Monitor.app"
 ```
 
-Use the control window to create an account and open the web interface. The app uses free ad-hoc signing; first-launch macOS approval and policy restrictions remain part of hardware acceptance testing. See the [installation guide](docs/installation.md) for installed paths, offline installation, and troubleshooting. Do not change `/Applications` permissions to work around an installer error.
+Open the web interface from the control window. On first local access, the page shows the account creation form directly; no separate control-window setup action is required. The app uses free ad-hoc signing; first-launch macOS approval and policy restrictions remain part of hardware acceptance testing. See the [installation guide](docs/installation.md) for installed paths, offline installation, and troubleshooting. Do not change `/Applications` permissions to work around an installer error.
 
 The release includes arm64 and x86_64 archives, individual checksum files, and `SHA256SUMS`. Apple Silicon is the target for this release; the Intel package is provided for development diagnostics.
 
@@ -64,23 +64,23 @@ mkdir -m 700 /private/tmp/cloudmacmonitor-dev
 .build/debug/MonitorControl --data-root /private/tmp/cloudmacmonitor-dev
 ```
 
-Production ownership is bound by the installer to an ordinary UID and its GeneratedUID, rather than inferred from the current desktop login. The Agent runs as that user in a system LaunchDaemon. LAN access cannot be enabled before an account exists. Setup and pairing tickets are issued through the owner's Unix control channel, placed in URL fragments, and are single-use with a five-minute lifetime. Password changes and device revocation invalidate the relevant sessions.
+Production ownership is bound by the installer to an ordinary UID and its GeneratedUID, rather than inferred from the current desktop login. The Agent runs as that user in a system LaunchDaemon. LAN access cannot be enabled before an account exists. First account creation is allowed directly from the same-origin loopback web page while no account exists; the LAN listener cannot create accounts. The compatible native setup link and device pairing tickets use the owner's Unix control channel, URL fragments, and single-use five-minute tickets. Password changes and device revocation invalidate the relevant sessions.
 
 ## Package the app
 
 ```bash
-bash scripts/package-app.sh 0.1.1
-CMM_ARCH=arm64 bash scripts/package-app.sh 0.1.1
+bash scripts/package-app.sh 0.1.2
+CMM_ARCH=arm64 bash scripts/package-app.sh 0.1.2
 ```
 
-These commands produce `artifacts/CloudMacMonitor-0.1.1-<arch>.tar.gz`, its SHA-256 checksum file, and `artifacts/package/<arch>/Cloud Mac Monitor.app`. An Intel development machine can cross-compile the Apple Silicon package, but runtime compatibility still requires testing on the target hardware.
+These commands produce `artifacts/CloudMacMonitor-0.1.2-<arch>.tar.gz`, its SHA-256 checksum file, and `artifacts/package/<arch>/Cloud Mac Monitor.app`. An Intel development machine can cross-compile the Apple Silicon package, but runtime compatibility still requires testing on the target hardware.
 
 For offline installation, copy the matching archive, checksum file, and installer to the target Mac. Review the script and run it as the intended ordinary owner; the installer requests administrator authorization:
 
 ```bash
-package="artifacts/CloudMacMonitor-0.1.1-$(uname -m).tar.gz"
+package="artifacts/CloudMacMonitor-0.1.2-$(uname -m).tar.gz"
 expected="$(awk '{print $1}' "$package.sha256")"
-bash scripts/install.sh 0.1.1 --local "$package" "$expected"
+bash scripts/install.sh 0.1.2 --local "$package" "$expected"
 ```
 
 The download installer also accepts `scripts/install.sh VERSION HTTPS_RELEASE_BASE SHA256`. Its administrator phase rechecks the archive in a root-owned staging directory, rejects traversal and links, and installs the fixed app and LaunchDaemon paths. Upgrades preserve the account, history, and previous service-start preferences. The installer accepts the standard root:admin 775 permissions on `/Applications` without changing them. It stores the actual app in `/Library/Application Support/CloudMacMonitor/Cloud Mac Monitor.app` under root-owned, non-writable parents and creates a managed entry-point link at `/Applications/Cloud Mac Monitor.app`. The LaunchDaemon and administrator tool use the protected app path directly. Other installation parents remain strictly protected. The native update checker requires a configured `ReleaseRepository`; it is not configured in the current package.
@@ -89,7 +89,7 @@ The download installer also accepts `scripts/install.sh VERSION HTTPS_RELEASE_BA
 
 System sampling runs every second and application scans every four seconds, independently of connected viewers. Temperature and GPU sampling use ten- and five-second intervals. System history uses tiered retention for 30 days; application summaries retain the final CPU-average, observed-memory-peak, and disk-increment top-ten union for seven days. Pausing persistence keeps recent in-memory data available. Clearing history uses a recording-epoch barrier to invalidate previous data and queries.
 
-Readable temperature sensors can be selected by their raw IDs. Unverified model mappings are not presented as verified CPU temperatures. Read-only SMC/HID/GPU interfaces may be unavailable on some models or under particular permissions. English, Simplified Chinese, and Traditional Chinese are available in the app.
+Temperature appears as CPU/graphics/drive peak summaries and a list of named readings in °C, with raw IDs available in details. Drive discovery includes external storage, with read-only ATA/NVMe SMART queries once per minute when the driver exposes the interface; unsupported connections or denied permissions show an unavailable reading. Unverified model mappings are not presented as verified CPU temperatures. Read-only SMC/HID/GPU interfaces may be unavailable on some models or under particular permissions. English, Simplified Chinese, and Traditional Chinese are available in the app.
 
 ## Measure the actual Agent
 

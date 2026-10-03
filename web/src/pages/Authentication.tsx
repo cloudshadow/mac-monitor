@@ -37,7 +37,7 @@ export function Authentication({
   return (
     <section className="auth card">
       <h1>{t(setup ? "auth:setup.title" : "auth:login.title")}</h1>
-      {(setup && !ticket) || status === "returnToMac" ? (
+      {status === "returnToMac" ? (
         <p>{t("auth:setupRequired")}</p>
       ) : status === "recoveryRequired" ? (
         <p>{t("auth:recoveryRequired")}</p>

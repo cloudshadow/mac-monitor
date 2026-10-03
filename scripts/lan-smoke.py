@@ -23,6 +23,7 @@ with tempfile.TemporaryDirectory(prefix='cmm-lan.',dir='/private/tmp') as root:
    for name,value in r.getheaders():
     if name.lower()=='set-cookie': assert 'Secure' in value and 'HttpOnly' in value; key,token=value.split(';')[0].split('=',1);cookies[key]=token
    c.close();return json.loads(raw) if raw else None
+  request('/api/v1/auth/setup','POST',{'username':'remote','password':'remote-password-12345'},expected=403)
   request('/api/v1/snapshot',expected=403)
   ticket=urllib.parse.parse_qs(urllib.parse.urlsplit(control('pair')['url']).fragment)['pair'][0]
   request('/api/v1/pairing/exchange','POST',{'ticket':ticket,'deviceLabel':'integration-device'})

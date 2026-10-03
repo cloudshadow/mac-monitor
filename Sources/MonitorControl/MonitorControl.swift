@@ -57,13 +57,6 @@ import SwiftUI
       NSWorkspace.shared.open(url)
     }
   }
-  func setup() {
-    send("setup") { result in
-      if let value = result["url"].string, let url = URL(string: value) {
-        NSWorkspace.shared.open(url)
-      }
-    }
-  }
   func pair() {
     send("pair") {
       self.pairingURL = $0["url"].string ?? ""
@@ -142,8 +135,8 @@ struct ControlView: View {
       HStack {
         Button(NativeKeys.refresh()) { model.refresh() }
         Button(NativeKeys.open()) { model.openMonitor() }
-        Button(NativeKeys.setup()) { model.setup() }
       }
+      Text(NativeKeys.refreshHelp()).font(.caption).foregroundStyle(.secondary)
       if model.status["recoveryRequired"].bool == true {
         Button(NativeKeys.recover()) { showRecovery = true }
       }
@@ -167,7 +160,7 @@ struct ControlView: View {
       }
       Divider()
       HStack {
-        Picker("LAN", selection: $interface) {
+        Picker(NativeKeys.lanInterface(), selection: $interface) {
           Text("—").tag("")
           ForEach(model.status["interfaces"].array, id: \.self) { value in
             Text((value["name"].string ?? "") + " · " + (value["address"].string ?? "")).tag(
@@ -177,8 +170,12 @@ struct ControlView: View {
         Button(NativeKeys.lan()) {
           model.send("lan", arguments: ["enabled": .bool(true), "interface": .string(interface)])
         }
-        Button("×") { model.send("lan", arguments: ["enabled": .bool(false)]) }
+        Button(NativeKeys.disableLAN()) { model.send("lan", arguments: ["enabled": .bool(false)]) }
         Button(NativeKeys.pair()) { model.pair() }
+      }
+      Text(NativeKeys.lanHelp()).font(.caption).foregroundStyle(.secondary)
+      if let address = model.status["lanAddress"].string, !address.isEmpty {
+        Text(address).font(.caption).textSelection(.enabled)
       }
       if !model.pairingURL.isEmpty {
         HStack(alignment: .top) {

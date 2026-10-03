@@ -110,3 +110,15 @@ struct AuthTests {
   #expect(successes == 1)
   #expect(try store.account() != nil)
 }
+
+@Test func localFirstRunCreatesOnceWithoutControlTicket() async throws {
+  let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+  try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+  defer { try? FileManager.default.removeItem(at: root) }
+  let auth = try AuthService(store: StateStore(path: root.appendingPathComponent("state.sqlite").path))
+  let result = try await auth.setup(ticket: "", username: "owner", password: "first-run-password-123", ip: "local", localFirstRun: true)
+  #expect(try auth.session(token: result.token, deviceToken: nil, lan: false).epoch == 1)
+  await #expect(throws: APIError.self) {
+    try await auth.setup(ticket: "", username: "other", password: "other-password-12345", ip: "local", localFirstRun: true)
+  }
+}

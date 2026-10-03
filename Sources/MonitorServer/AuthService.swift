@@ -110,14 +110,20 @@ public final class AuthService: @unchecked Sendable {
     state.withLock { $0.setup = [Crypto.hash(ticket): Date().addingTimeInterval(300)] }
     return ticket
   }
-  public func setup(ticket: String, username: String, password: String, ip: String) async throws
+  public func setup(ticket: String, username: String, password: String, ip: String, localFirstRun: Bool = false) async throws
     -> AuthResult
   {
     try limit(ip)
     let user = try Self.validate(username: username, password: password)
-    try state.withLock { s in
-      guard let date = s.setup.removeValue(forKey: Crypto.hash(ticket)), date > Date() else {
-        throw APIError(403, "setupTicketInvalid")
+    guard !store.recoveryRequired else { throw APIError(409, "recoveryRequired") }
+    guard try store.account() == nil else { throw APIError(409, "accountExists") }
+    // The HTTP route grants localFirstRun only on the loopback listener after Origin validation.
+    // StateStore.create performs the final atomic single-account check after the asynchronous KDF.
+    if !localFirstRun {
+      try state.withLock { s in
+        guard let date = s.setup.removeValue(forKey: Crypto.hash(ticket)), date > Date() else {
+          throw APIError(403, "setupTicketInvalid")
+        }
       }
     }
     let hash = try await kdf { try Self.passwordHash(password) }

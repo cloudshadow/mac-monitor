@@ -1,13 +1,13 @@
 # HTTP / SSE Contract v1
 
-历史、账户与设备配对契约已同步；当前未实现。默认本机`http://127.0.0.1:8765`、LAN `https://<Mac主机名或IP>:8766`；端口冲突自动选择可用端口，由受限本地控制通道取得实际地址并同步Host/Origin白名单。
+历史、账户与设备配对契约已实现；首次开户流程按 2026-10-03 用户要求修订。默认本机`http://127.0.0.1:8765`、LAN `https://<Mac主机名或IP>:8766`；端口冲突自动选择可用端口，由受限本地控制通道取得实际地址并同步Host/Origin白名单。
 
 ## 认证矩阵
 
 | 请求 | 认证要求 |
 | --- | --- |
 | 静态页面、health、auth/status | 无账户会话；不返回指标/用户名/版本秘密 |
-| 首次创建账户 | 仅loopback + 当前有效setup票据 + 同源Origin |
+| 首次创建账户 | 仅loopback + 同源Origin + 尚无账户且无损坏状态；setup票据可选 |
 | 配对兑换 | 已信任LAN TLS + 单次配对票据 + 同源Origin |
 | 本机登录 | 同源Origin + 用户名密码 |
 | LAN登录 | 已信任TLS + 有效设备资格 + 用户名密码 |
@@ -17,7 +17,7 @@
 
 loopback使用独立cookie。LAN的device和account cookie为HttpOnly、Secure、SameSite=Strict；所有cookie限制Path，服务器只保存token散列。账户会话12小时、设备资格30天；配对绝不自动登录账户。退出/撤销同时关闭相关SSE，最迟5秒生效。服务重启清空账户会话，账号与设备资格及历史保留。
 
-Host与请求类型对应的Origin规则见下表，不开放CORS。已有会话的修改操作需CSRF token；首次setup/pair票据各5分钟一次使用，不进日志或query字符串。票据从URL fragment取得后清理地址，POST兑换；原生进程验证控制通道peer UID匹配安装时绑定的服务所有者，socket位于受限run目录且0600；不把任意当前登录用户当作所有者。静态内容纯文本渲染进程名，CSP为本源并禁止被frame嵌入。
+Host与请求类型对应的Origin规则见下表，不开放CORS。已有会话的修改操作需CSRF token；首次本机setup不要求票据；兼容setup/pair票据各5分钟一次使用，不进日志或query字符串。票据从URL fragment取得后清理地址，POST兑换；原生进程验证控制通道peer UID匹配安装时绑定的服务所有者，socket位于受限run目录且0600；不把任意当前登录用户当作所有者。静态内容纯文本渲染进程名，CSP为本源并禁止被frame嵌入。
 
 ## 请求来源校验（U4）
 
@@ -40,7 +40,7 @@ Host与请求类型对应的Origin规则见下表，不开放CORS。已有会话
 | GET `/healthz` | 无 | `{status:"ok"}` |
 | GET `/api/v1/auth/status` | 无 | `setupRequired / recoveryRequired / loginRequired / authenticated / pairingRequired`，LAN不能据此setup；未初始化LAN仅提示回Mac设置 |
 | GET `/api/v1/auth/session` | 有效会话，LAN需设备资格，同源读取 | csrfToken,expiresAt；no-store，未登录401 |
-| POST `/api/v1/auth/setup` | setupTicket, username, password | 201，唯一账户、本机会话及csrfToken；已有账户409 |
+| POST `/api/v1/auth/setup` | username, password；setupTicket可选 | 201，唯一账户、本机会话及csrfToken；已有账户409 |
 | POST `/api/v1/pairing/exchange` | ticket, deviceLabel | 200+设备cookie，不发账户会话 |
 | POST `/api/v1/auth/login` | username,password | 200+账户cookie+csrfToken；失败统一401 |
 | POST `/api/v1/auth/logout` | CSRF | 204，撤销当前账户会话和流 |

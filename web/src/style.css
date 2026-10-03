@@ -190,3 +190,26 @@ summary {
     margin-top: 24px;
   }
 }
+
+.temperature-summary { display: flex; justify-content: space-around; gap: 12px; }
+.temperature-dial { position: relative; width: 150px; aspect-ratio: 1; }
+.temperature-dial svg, .temperature-mini svg { width: 100%; height: 100%; transform: rotate(-90deg); fill: none; stroke: #dce5e9; stroke-width: 3; }
+.temperature-progress { stroke: #0784ff; stroke-linecap: round; }
+.temperature-dial > div { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+.temperature-dial strong { font-size: 27px; font-variant-numeric: tabular-nums; }
+.temperature-dial small { font-size: 11px; }
+.temperature-mini { width: 28px; height: 28px; flex-shrink: 0; }
+.temperature-caption { color: #58726c; font-size: 12px; }
+.temperature-list { list-style: none; padding: 0; margin: 20px 0; }
+.temperature-list li { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid #e1e9e6; }
+.temperature-name { flex: 1; min-width: 0; overflow-wrap: anywhere; display: grid; gap: 4px; }
+.temperature-list strong { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.temperature-panel details p { overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  .temperature-dial { width: 100px; }
+  .temperature-dial strong { font-size: 18px; }
+  .temperature-dial span { font-size: 12px; }
+  .temperature-summary { gap: 6px; }
+}
+
+@media (max-width: 600px) { .temperature-dial small { font-size: 9px; } }

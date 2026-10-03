@@ -28,5 +28,9 @@
   "deleteData": "Delete saved account, history and TLS data when uninstalling",
   "serviceState": "Boot preference {boot} · system enabled {system} · loaded {loaded} · running {running}",
   "yes": "Yes",
-  "no": "No"
+  "no": "No",
+  "refreshHelp": "Refresh the monitor address, network interfaces, and recording status. This does not restart the service.",
+  "lanInterface": "Local network interface",
+  "lanHelp": "For phones and other computers on the same network: choose an interface, enable LAN, then create a pairing code. Local monitoring works with LAN disabled.",
+  "disableLAN": "Disable LAN"
 }
