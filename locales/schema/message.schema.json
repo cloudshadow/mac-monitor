@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","oneOf":[{"type":"string","minLength":1},{"type":"object","required":["type","argument","forms"],"additionalProperties":false,"properties":{"type":{"const":"plural"},"argument":{"type":"string"},"forms":{"type":"object","required":["other"],"additionalProperties":{"type":"string","minLength":1}}}}]}

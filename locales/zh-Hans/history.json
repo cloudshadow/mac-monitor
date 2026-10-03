@@ -1,0 +1,13 @@
+{
+  "range": "时间范围",
+  "fiveMinutes": "5 分钟",
+  "day": "24 小时",
+  "week": "7 天",
+  "month": "30 天",
+  "coverage": "缺口表示缺失数据，下方显示桶精度。",
+  "precision": "输出精度 {seconds} 秒 · 来源 {source} 秒",
+  "recording": "记录中",
+  "paused": "已暂停，近期数据仍可读",
+  "summary": "应用摘要保留最终 CPU／内存／磁盘各前十名的并集，并非完整进程审计。",
+  "metric": "指标"
+}

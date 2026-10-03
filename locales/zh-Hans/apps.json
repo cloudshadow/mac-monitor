@@ -1,0 +1,10 @@
+{
+  "search": "搜索应用",
+  "cpu": "CPU · 单核 %",
+  "memory": "物理占用",
+  "diskRead": "磁盘读取 / 秒",
+  "diskWrite": "磁盘写入 / 秒",
+  "coverage": "可读 {readable} / 尝试 {attempted} 个进程",
+  "newScan": "已有新扫描，请返回首页刷新。",
+  "members": "进程"
+}

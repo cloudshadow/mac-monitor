@@ -1,0 +1,10 @@
+{
+  "search": "搜尋應用",
+  "cpu": "CPU · 單核 %",
+  "memory": "實體佔用",
+  "diskRead": "磁碟讀取 / 秒",
+  "diskWrite": "磁碟寫入 / 秒",
+  "coverage": "可讀 {readable} / 嘗試 {attempted} 個程序",
+  "newScan": "已有新掃描，請返回首頁重新整理。",
+  "members": "程序"
+}

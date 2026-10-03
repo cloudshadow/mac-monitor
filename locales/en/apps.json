@@ -1,0 +1,10 @@
+{
+  "search": "Search applications",
+  "cpu": "CPU · core %",
+  "memory": "Physical footprint",
+  "diskRead": "Disk reads / s",
+  "diskWrite": "Disk writes / s",
+  "coverage": "Readable {readable} of {attempted} processes",
+  "newScan": "New scan available. Return to first page to refresh.",
+  "members": "Processes"
+}

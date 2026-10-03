@@ -1,0 +1,1 @@
+{"range":"時間範圍","fiveMinutes":"5 分鐘","day":"24 小時","week":"7 天","month":"30 天","coverage":"缺口表示遺失資料，下方顯示桶精度。","precision":"輸出精度 {seconds} 秒 · 來源 {source} 秒","recording":"記錄中","paused":"已暫停，近期資料仍可讀","summary":"應用摘要保留最終 CPU／記憶體／磁碟各前十名的聯集，並非完整程序稽核。","metric":"指標"}

@@ -1,0 +1,12 @@
+{
+  "tag": "zh-Hant",
+  "nativeName": "繁體中文",
+  "englishName": "Traditional Chinese",
+  "direction": "ltr",
+  "aliases": [
+    "zh-TW",
+    "zh-HK",
+    "zh-MO"
+  ],
+  "status": "published"
+}

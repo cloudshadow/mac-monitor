@@ -1,0 +1,11 @@
+{
+  "tag": "en",
+  "nativeName": "English",
+  "englishName": "English",
+  "direction": "ltr",
+  "aliases": [
+    "en-US",
+    "en-GB"
+  ],
+  "status": "published"
+}
