@@ -12,3 +12,9 @@
 - [ ] FR/SC 覆盖审查完成，无未披露的软件缺口。
 
 此清单是发行门槛，不能用开发机编译、浏览器自动测试或短时冒烟替代。
+
+## v0.1.1 installation-path correction
+
+The v0.1.0 installer rejected the standard root:admin 775 `/Applications` directory before copying the app. v0.1.1 accepts this entry-point directory without chmod, stores the real bundle at `/Library/Application Support/CloudMacMonitor/Cloud Mac Monitor.app`, and creates a root-owned launcher symlink at `/Applications/Cloud Mac Monitor.app`. Both launchd and the fixed administrator tool execute from the protected bundle, not through the public link. The link is replaced using atomic rename and never follows or deletes an unrelated destination. Account/history/TLS data locations are unchanged.
+
+Four installation regression tests cover the default directory policy, managed link replacement/removal, unrelated directory/link preservation, and interrupted staging-link recovery. Live administrator installation and launchd registration remain target-machine acceptance tests. A legacy v0.1.0 real bundle can migrate only while its complete original code path is protected; an unsafe or unmanaged legacy entry is refused without executing its helper.

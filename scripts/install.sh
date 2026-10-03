@@ -30,7 +30,8 @@ sudo /bin/bash -s -- "$stage/archive.tar.gz" "$expected" "$owner_name" "$owner_u
 set -euo pipefail
 source_archive="$1"; expected="$2"; owner_name="$3"; owner_uid="$4"; owner_guid="$5"
 root='/Library/Application Support/CloudMacMonitor'
-app='/Applications/Cloud Mac Monitor.app'
+app="$root/Cloud Mac Monitor.app"
+public_app='/Applications/Cloud Mac Monitor.app'
 job='system/org.cloudmacmonitor.agent'
 plist='/Library/LaunchDaemons/org.cloudmacmonitor.agent.plist'
 [[ "$owner_uid" =~ ^[0-9]+$ && "$owner_uid" != 0 && "$owner_name" =~ ^[A-Za-z0-9._-]+$ && "$expected" =~ ^[a-fA-F0-9]{64}$ ]] || exit 1
@@ -44,7 +45,12 @@ protected_parent() {
     current="$(dirname "$current")"
   done
 }
-protected_parent /Applications
+# /Applications normally belongs to root:admin and is mode 775. It only hosts
+# an entry-point link; trusted executables live under the protected root below.
+[[ ! -L /Applications && -d /Applications && "$(stat -f %u /Applications)" == 0 ]] || { echo 'Unsafe Applications directory' >&2; exit 1; }
+applications_mode="$(stat -f %Lp /Applications)"
+applications_gid="$(stat -f %g /Applications)"
+(( (8#$applications_mode & 8#002) == 0 && ((8#$applications_mode & 8#020) == 0 || applications_gid == 80) )) || { echo 'Unsafe Applications directory permissions' >&2; exit 1; }
 protected_parent '/Library/Application Support'
 protected_parent /Library/LaunchDaemons
 [[ ! -L "$root" ]] || exit 1
@@ -67,26 +73,40 @@ new_app="$root_stage/extract/Cloud Mac Monitor.app"
 [[ -d "$new_app" && -z "$(find "$new_app" -type l -print -quit)" && -z "$(find "$new_app" -perm -4000 -print -quit)" ]] || exit 1
 codesign --verify --deep --strict "$new_app"
 for name in MonitorAgent MonitorControl MonitorMaintenance; do [[ -f "$new_app/Contents/MacOS/$name" && -x "$new_app/Contents/MacOS/$name" ]] || exit 1; done
-restart=false; enabled=true
+restart=false; enabled=true; legacy=false
+if [[ -L "$public_app" ]]; then
+  [[ "$(stat -f %u "$public_app")" == 0 && "$(readlink "$public_app")" == "$app" ]] || { echo 'Unmanaged application entry; nothing replaced.' >&2; exit 1; }
+elif [[ -e "$public_app" ]]; then
+  # Only migrate a legacy bundle whose entire original code path is still protected.
+  protected_parent "$public_app"
+  [[ -e "$root/installation.json" && ! -e "$app" && "$(plutil -extract CFBundleIdentifier raw -o - "$public_app/Contents/Info.plist")" == org.cloudmacmonitor.control ]] || { echo 'Unmanaged or unsafe legacy app; reviewed migration required.' >&2; exit 1; }
+  legacy=true
+fi
+old="$root/previous.app"
+[[ ! -e "$old" && ! -L "$old" ]] || { echo 'Previous recovery bundle exists; inspect it before retrying.' >&2; exit 1; }
 if [[ -e "$root/installation.json" ]]; then
   protected_parent "$root/installation.json"
   [[ "$(plutil -extract ownerUid raw -o - "$root/installation.json")" == "$owner_uid" && "$(plutil -extract ownerGuid raw -o - "$root/installation.json")" == "$owner_guid" ]] || { echo 'Owner migration requires an explicit reviewed migration.' >&2; exit 1; }
-  "$app/Contents/MacOS/MonitorMaintenance" status > "$root_stage/before.json"
+  installed_app="$app"
+  if [[ "$legacy" == true ]]; then installed_app="$public_app"; fi
+  protected_parent "$installed_app/Contents/MacOS/MonitorMaintenance"
+  "$installed_app/Contents/MacOS/MonitorMaintenance" status > "$root_stage/before.json"
   enabled="$(plutil -extract bootEnabled raw -o - "$root_stage/before.json")"
   if [[ "$(plutil -extract systemEnabled raw -o - "$root_stage/before.json")" != true ]]; then enabled=false; fi
   if [[ "$enabled" == true && "$(plutil -extract running raw -o - "$root_stage/before.json")" == true ]]; then restart=true; fi
-  "$app/Contents/MacOS/MonitorMaintenance" stop
+  "$installed_app/Contents/MacOS/MonitorMaintenance" stop
 else
   restart=true
   for directory in data; do install -d -m 700 -o "$owner_uid" -g "$(id -g "$owner_name")" "$root/$directory"; done
 fi
 printf '{"ownerName":"%s","ownerUid":%s,"ownerGuid":"%s","bootEnabled":%s}\n' "$owner_name" "$owner_uid" "$owner_guid" "$enabled" > "$root_stage/installation.json"
 install -m 644 -o root -g wheel "$root_stage/installation.json" "$root/installation.json"
-old="$root/previous.app"
-[[ ! -e "$old" ]] || { echo 'Previous recovery bundle exists; inspect it before retrying.' >&2; exit 1; }
-if [[ -e "$app" ]]; then protected_parent "$app"; mv "$app" "$old"; fi
+if [[ "$legacy" == true ]]; then mv "$public_app" "$old";
+elif [[ -e "$app" ]]; then protected_parent "$app"; mv "$app" "$old"; fi
 mv "$new_app" "$app"
 chown -R root:wheel "$app"; chmod -R go-w "$app"
+protected_parent "$app/Contents/MacOS/MonitorMaintenance"
+"$app/Contents/MacOS/MonitorMaintenance" installLink
 sed "s/__OWNER_NAME__/$owner_name/g" "$app/Contents/Resources/LaunchDaemons/org.cloudmacmonitor.agent.plist" > "$root_stage/agent.plist"
 plutil -lint "$root_stage/agent.plist"
 install -m 644 -o root -g wheel "$root_stage/agent.plist" "$plist"

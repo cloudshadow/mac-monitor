@@ -6,11 +6,11 @@ The software implementation and development-machine checks are complete. Apple S
 
 ## Install the prerelease
 
-Download [v0.1.0](https://github.com/cloudshadow/mac-monitor/releases/tag/v0.1.0), or run the following commands on an Apple Silicon Mac using the intended ordinary service-owner account:
+Download [v0.1.1](https://github.com/cloudshadow/mac-monitor/releases/tag/v0.1.1), or run the following commands on an Apple Silicon Mac using the intended ordinary service-owner account:
 
 ```bash
-curl -fL https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.0/install.sh -o install.sh
-bash install.sh 0.1.0 https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.0 8aaaeea1ca312a839d12c6abf3126781bd5130b270d29fb6f01ac90b0cf6d234
+curl -fL https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.1/install.sh -o install.sh
+bash install.sh 0.1.1 https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.1 f796eff07e4ed5e51caeec2eb4e1090ce73464c1ac77a3c8f6a050d0ba2bc706
 ```
 
 Review the installer before running it. It downloads without administrator privileges, verifies the pinned SHA-256 checksum, and requests administrator authorization for installation. Open `/Applications/Cloud Mac Monitor.app` afterward to create an account. The app uses free ad-hoc signing; first-launch macOS approval and policy restrictions remain part of hardware acceptance testing.
@@ -53,21 +53,21 @@ Production ownership is bound by the installer to an ordinary UID and its Genera
 ## Package the app
 
 ```bash
-bash scripts/package-app.sh 0.1.0
-CMM_ARCH=arm64 bash scripts/package-app.sh 0.1.0
+bash scripts/package-app.sh 0.1.1
+CMM_ARCH=arm64 bash scripts/package-app.sh 0.1.1
 ```
 
-These commands produce `artifacts/CloudMacMonitor-0.1.0-<arch>.tar.gz`, its SHA-256 checksum file, and `artifacts/package/<arch>/Cloud Mac Monitor.app`. An Intel development machine can cross-compile the Apple Silicon package, but runtime compatibility still requires testing on the target hardware.
+These commands produce `artifacts/CloudMacMonitor-0.1.1-<arch>.tar.gz`, its SHA-256 checksum file, and `artifacts/package/<arch>/Cloud Mac Monitor.app`. An Intel development machine can cross-compile the Apple Silicon package, but runtime compatibility still requires testing on the target hardware.
 
 For offline installation, copy the matching archive, checksum file, and installer to the target Mac. Review the script and run it as the intended ordinary owner; the installer requests administrator authorization:
 
 ```bash
-package="artifacts/CloudMacMonitor-0.1.0-$(uname -m).tar.gz"
+package="artifacts/CloudMacMonitor-0.1.1-$(uname -m).tar.gz"
 expected="$(awk '{print $1}' "$package.sha256")"
-bash scripts/install.sh 0.1.0 --local "$package" "$expected"
+bash scripts/install.sh 0.1.1 --local "$package" "$expected"
 ```
 
-The download installer also accepts `scripts/install.sh VERSION HTTPS_RELEASE_BASE SHA256`. Its administrator phase rechecks the archive in a root-owned staging directory, rejects traversal and links, and installs the fixed app and LaunchDaemon paths. Upgrades preserve the account, history, and previous service-start preferences. The installer rejects installation parents that ordinary users can replace and does not change system-directory permissions automatically. The native update checker requires a configured `ReleaseRepository`; it is not configured in the current package.
+The download installer also accepts `scripts/install.sh VERSION HTTPS_RELEASE_BASE SHA256`. Its administrator phase rechecks the archive in a root-owned staging directory, rejects traversal and links, and installs the fixed app and LaunchDaemon paths. Upgrades preserve the account, history, and previous service-start preferences. The installer accepts the standard root:admin 775 permissions on `/Applications` without changing them. It stores the actual app in `/Library/Application Support/CloudMacMonitor/Cloud Mac Monitor.app` under root-owned, non-writable parents and creates a managed entry-point link at `/Applications/Cloud Mac Monitor.app`. The LaunchDaemon and administrator tool use the protected app path directly. Other installation parents remain strictly protected. The native update checker requires a configured `ReleaseRepository`; it is not configured in the current package.
 
 ## Monitoring and history
 

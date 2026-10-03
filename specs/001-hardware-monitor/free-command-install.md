@@ -56,3 +56,5 @@ Homebrew可通过自己的tap分发，无需假定已被官方仓库收录；for
 ## 提前验证的安装路径
 
 G4/T004先验证免费ad-hoc控制端和固定维护工具：首装终端sudo，已安装图形控制端以NSAppleScript管理员授权调用root保护的绝对工具路径；不让root运行远程流式脚本。T041/T043做完整整合，图形授权失败仍阻塞SC-011。命令状态及升级恢复按 [launchdaemon.md](launchdaemon.md)：disable保留当前运行，stop禁用并退出；已关闭但仍运行的服务升级后保持关闭且停止，安装器在停机前明确提示。
+
+2026-10-03 安装路径修正：/Applications/Cloud Mac Monitor.app 为图形入口链接；实际代码位于 /Library/Application Support/CloudMacMonitor/Cloud Mac Monitor.app。默认 root:admin 775 的 /Applications 不修改权限，服务与固定管理员工具直接执行受保护路径。

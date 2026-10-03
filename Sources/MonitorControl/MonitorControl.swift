@@ -83,7 +83,7 @@ import SwiftUI
       ["status", "enable", "start", "disable", "stop", "uninstall", "uninstallData"].contains(
         action), !busy
     else { return }
-    let app = "/Applications/Cloud Mac Monitor.app/Contents/MacOS/MonitorMaintenance"
+    let app = InstallationLayout.maintenance
     let script = "do shell script \"'\(app)' '\(action)' || true\" with administrator privileges"
     busy = true
     error = ""

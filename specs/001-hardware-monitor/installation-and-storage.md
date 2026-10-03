@@ -92,3 +92,5 @@ React、TypeScript、Vite只参与前端开发/构建，生产静态资源随应
 首选预编译应用及开源一行安装器，无需Apple付费发行身份；公证DMG为可选后续渠道。费用、证书类型和发布流程见 [signing-and-open-source.md](signing-and-open-source.md)。
 
 历史管理语义见 [history-storage.md](history-storage.md)：暂停保存仍保留近期实时曲线，恢复不补写；清空同时清除已保存历史、近期曲线及待写队列，保留当前实时值和暂停设置。控制端清空确认文字必须表达该范围，不能让用户误以为只删SQLite文件。
+
+2026-10-03 安装路径修正：/Applications/Cloud Mac Monitor.app 为图形入口链接；实际代码位于 /Library/Application Support/CloudMacMonitor/Cloud Mac Monitor.app。默认 root:admin 775 的 /Applications 不修改权限，服务与固定管理员工具直接执行受保护路径。

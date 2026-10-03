@@ -18,7 +18,7 @@
 
 | 检查 | 结果/产物 |
 |---|---|
-| Swift 风险测试 | 18 项通过，`artifacts/final-tests.log` |
+| Swift 风险测试 | 22 项通过，`artifacts/install-fix-tests.log` |
 | 多语言资源与第四语言注册 | 3 项通过，`artifacts/final-i18n-tests.log` |
 | 网页类型/生产构建 | `artifacts/final-web-build.log`；入口 JS+CSS gzip 约 76KiB，另计按需语言字典 |
 | 真实 HTTP/IPC 流程 | `artifacts/final-http-smoke.json` |
@@ -30,10 +30,16 @@
 
 ## 拿到真机后的顺序
 
-1. Apple Silicon 使用 `artifacts/CloudMacMonitor-0.1.0-arm64.tar.gz` 与对应 `.sha256`，按 README 的 `--local` 安装入口执行。正式公开版本下载仍需配置 ReleaseRepository；项目 LICENSE/版权主体尚待确定。
+1. Apple Silicon 使用 `artifacts/CloudMacMonitor-0.1.1-arm64.tar.gz` 与对应 `.sha256`，按 README 的 `--local` 安装入口执行。正式公开版本下载仍需配置 ReleaseRepository；项目 LICENSE/版权主体尚待确定。
 2. 按 [install-validation.md](install-validation.md) 验证首次批准、普通 UID/system 域、管理员取消、无桌面/注销、升级启停保留、失败恢复及卸载。
 3. 按 [mobile-setup.md](mobile-setup.md) 导入 CA、配对/登录与撤销，核对 360px 界面、手机证书与网络切换。
 4. 按 [compatibility.md](compatibility.md) 对照 CPU/内存/应用和原始 sensor ID，建立机型温度/GPU 表。当前不把未验证传感器猜作 CPU 温度。
 5. 按 [performance.md](performance.md) 跑实际 Agent 的 0/1/3 查看者、500/2,000 进程、登录瞬态、睡眠/回拨、历史故障/容量和 24h 场景；记录参考机数据后核对发行清单。
 
 这些验收项及公开许可/发行地址决定能否正式发布。代码和本地构建产物可直接用于上述验收。
+
+## v0.1.1 installation-path correction
+
+The v0.1.0 installer rejected the standard root:admin 775 `/Applications` directory before copying the app. v0.1.1 accepts this entry-point directory without chmod, stores the real bundle at `/Library/Application Support/CloudMacMonitor/Cloud Mac Monitor.app`, and creates a root-owned launcher symlink at `/Applications/Cloud Mac Monitor.app`. Both launchd and the fixed administrator tool execute from the protected bundle, not through the public link. The link is replaced using atomic rename and never follows or deletes an unrelated destination. Account/history/TLS data locations are unchanged.
+
+Four installation regression tests cover the default directory policy, managed link replacement/removal, unrelated directory/link preservation, and interrupted staging-link recovery. Live administrator installation and launchd registration remain target-machine acceptance tests. A legacy v0.1.0 real bundle can migrate only while its complete original code path is protected; an unsafe or unmanaged legacy entry is refused without executing its helper.

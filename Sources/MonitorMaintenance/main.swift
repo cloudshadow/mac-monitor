@@ -3,8 +3,8 @@ import Foundation
 import MonitorCore
 import MonitorIPC
 
-let root = "/Library/Application Support/CloudMacMonitor"
-let app = "/Applications/Cloud Mac Monitor.app"
+let root = InstallationLayout.root
+let app = InstallationLayout.app
 let label = "org.cloudmacmonitor.agent"
 let plist = "/Library/LaunchDaemons/org.cloudmacmonitor.agent.plist"
 let job = "system/org.cloudmacmonitor.agent"
@@ -63,7 +63,7 @@ func save(_ value: JSONValue, _ filename: String) throws {
 var actual: JSONValue = .null
 do {
   guard geteuid() == 0, CommandLine.arguments.count == 2,
-    ["status", "enable", "start", "disable", "stop", "uninstall", "uninstallData"].contains(
+    ["status", "enable", "start", "disable", "stop", "uninstall", "uninstallData", "installLink"].contains(
       CommandLine.arguments[1])
   else { throw APIError(403, "administratorRequired") }
   try protected(app + "/Contents/MacOS/MonitorMaintenance")
@@ -98,6 +98,13 @@ do {
     try save(config, "installation.json")
   }
   switch action {
+  case "installLink":
+    var directory = stat()
+    guard lstat("/Applications", &directory) == 0,
+      InstallationPathPolicy.applicationsDirectory(uid: directory.st_uid, gid: directory.st_gid, mode: directory.st_mode)
+    else { throw APIError(503, "unsafeApplicationsDirectory") }
+    try ApplicationLauncherLink.install(
+      bundle: app, launcher: InstallationLayout.launcher, staging: root + "/.applications-link.new")
   case "disable", "stop", "uninstall", "uninstallData":
     try run(["disable", job])
     guard try disabled() else { throw APIError(503, "disableFailed") }
@@ -116,6 +123,7 @@ do {
       if action == "uninstall" || action == "uninstallData" {
         try protected(plist)
         try FileManager.default.removeItem(atPath: plist)
+        try ApplicationLauncherLink.remove(bundle: app, launcher: InstallationLayout.launcher)
         try FileManager.default.removeItem(atPath: app)
       }
     }
