@@ -10,6 +10,7 @@ public final class AgentRuntime: @unchecked Sendable {
     server: MonitorHTTPServer
   private var scheduler: Scheduler!, control: LocalControlServer?
   private let lockFd: Int32, root: String, webRootForLAN: String
+  private let requestExit: @Sendable () -> Void
   private let stopping = Locked(false)
   private let lan = Locked((address: "", interface: ""))
   private var lanServer: MonitorHTTPServer?
@@ -19,7 +20,8 @@ public final class AgentRuntime: @unchecked Sendable {
   private var certificateCheckAt = Date.distantPast
   private let lifecycleQueue = DispatchQueue(label: "org.cloudmacmonitor.lifecycle")
   public private(set) var address = ""
-  public init(root: String, webRoot: String) throws {
+  public init(root: String, webRoot: String, requestExit: @escaping @Sendable () -> Void = {}) throws {
+    self.requestExit = requestExit
     guard geteuid() != 0 else { throw APIError(403, "ordinaryOwnerRequired") }
     self.root = root
     webRootForLAN = webRoot
@@ -172,7 +174,13 @@ public final class AgentRuntime: @unchecked Sendable {
     case "revokeDevice":
       try auth.revokeDevice(request["id"].string ?? "")
       return .object(["status": .string("ok")])
+    case "shutdown":
+      // Owner-only IPC: allow the acknowledgement to leave before closing the control socket.
+      stopping.withLock { $0 = true }
+      DispatchQueue.global().asyncAfter(deadline: .now() + .milliseconds(100), execute: requestExit)
+      return .object(["stopping": .bool(true), "pid": .number(Double(getpid()))])
     case "prepareStop":
+      stopping.withLock { $0 = true }
       scheduler.stop()
       server.stopListeners()
       lifecycleQueue.sync { lanServer?.stopListeners() }
@@ -240,6 +248,7 @@ public final class AgentRuntime: @unchecked Sendable {
     lan.withLock { $0 = ("https://\(chosen.address):\(port)", chosen.name) }
   }
   public func shutdown() async {
+    stopping.withLock { $0 = true }
     networkTimer?.cancel()
     for observer in powerObservers { NotificationCenter.default.removeObserver(observer) }
     scheduler.stop()

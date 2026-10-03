@@ -5,27 +5,42 @@ import MonitorCore
 
 /// Only read-only SMC commands are exposed by the bridge. Unknown formats are rejected.
 public enum SensorCollector {
+  private static let readableSMCKeys = Locked<[String]?>(nil)
   private static let diskCache = Locked((date: Date.distantPast, sensors: [JSONValue]()))
   public static func temperatures(intervalMs: Int) -> JSONValue {
     let date = Date()
     var readings: [JSONValue] = []
     var denied = false
-    // Fixed, bounded discovery list. IDs are preserved; no model-specific CPU/GPU attribution is guessed.
-    for key in ["TC0D", "TC0P", "Tp09", "Tp0T", "Tp0P", "Tp1P", "Tg0P", "TG0D"] {
-      var value = 0.0
-      let status = key.withCString { cmm_smc_temperature($0, &value) }
-      denied = denied || status == EACCES
-      if status == 0 {
-        readings.append(
-          .object([
-            "id": .string("smc:" + key), "label": .string(key), "mappingVerified": .bool(false),
-            "metric":
-              (try? .from(
-                Metric(
-                  value: value, unit: "celsius", status: .ok, source: "AppleSMC " + key,
-                  sampledAt: date, intervalMs: intervalMs))) ?? .null,
-          ]))
+    // Open one SMC connection per batch; unsupported keys are discovered only once.
+    let definitions = readableSMCKeys.withLock { cached in
+      cached.map { keys in SensorCatalog.definitions.filter { keys.contains($0.key) } } ?? SensorCatalog.definitions
+    }
+    var smc = definitions.map { definition in
+      var reading = cmm_smc_reading()
+      withUnsafeMutablePointer(to: &reading.key) { pointer in
+        pointer.withMemoryRebound(to: CChar.self, capacity: 5) { buffer in
+          for (index, byte) in definition.key.utf8.enumerated() { buffer[index] = CChar(bitPattern: byte) }
+        }
       }
+      return reading
+    }
+    let batchStatus = smc.isEmpty ? 0 : smc.withUnsafeMutableBufferPointer { cmm_smc_temperatures($0.baseAddress!, $0.count) }
+    denied = batchStatus == EACCES
+    if batchStatus != EACCES {
+      readableSMCKeys.withLock { cache in
+        if cache == nil { cache = zip(definitions, smc).filter { $0.1.status == 0 }.map { $0.0.key } }
+      }
+    }
+    for (definition, reading) in zip(definitions, smc) where reading.status == 0 {
+      var fields: [String: JSONValue] = [
+        "id": .string("smc:" + definition.key), "label": .string(definition.label),
+        "category": .string(definition.category), "mappingVerified": .bool(false),
+        "mappingReference": .string(SensorCatalog.reference),
+        "metric": (try? .from(Metric(value: reading.celsius, unit: "celsius", status: .ok,
+          source: "AppleSMC " + definition.key, sampledAt: date, intervalMs: intervalMs))) ?? .null,
+      ]
+      if let family = definition.family { fields["family"] = .string(family) }
+      readings.append(.object(fields))
     }
     var hid = [cmm_hid_temperature](repeating: cmm_hid_temperature(), count: 64)
     let count = hid.withUnsafeMutableBufferPointer {

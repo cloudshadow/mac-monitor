@@ -103,3 +103,7 @@ Last-Event-ID只判断连续性，不建立无限回放日志；重连发reset+�
 ## 历史控制结果（U5）
 
 本机history pause/resume/clear返回RecordingStatus及recordingEpoch；clear成功广播新epoch的recordingStatus，客户端取消旧历史请求并清空曲线。pause只停止持久保存，近期内存继续；resume不回填暂停数据；clear同时清理数据库、近期曲线、旧聚合/队列，保留当前实时值、账户及暂停选择。历史切换期间503 historyResetting，跨epoch结果409 historyChanged；严格顺序与失败处理见 [history-storage.md](../history-storage.md)。
+
+## Native owner stop (2026-10-03)
+
+Owner-only Unix IPC `shutdown` returns `{stopping: true, pid: <Agent PID>}` and schedules graceful termination after acknowledgement. It is not exposed as an HTTP route. The UI waits for actual PID exit before completing explicit Quit; success exits with code 0, while abnormal exits retain launchd crash recovery. Root IPC remains limited to `prepareStop`.

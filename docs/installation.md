@@ -2,7 +2,7 @@
 
 ## Download and install
 
-Use the [v0.1.2 prerelease](https://github.com/cloudshadow/mac-monitor/releases/tag/v0.1.2) and the complete commands in [README: Install the prerelease](../README.md#install-the-prerelease). They download `install-0.1.2.sh`, verify its checksum, select the archive for the current architecture, and verify the archive before installation. Apple Silicon is the target platform; the Intel archive is provided for development diagnostics. macOS 14 or later is required.
+Use the [v0.1.3 prerelease](https://github.com/cloudshadow/mac-monitor/releases/tag/v0.1.3) and the complete commands in [README: Install the prerelease](../README.md#install-the-prerelease). They download `install-0.1.3.sh`, verify its checksum, select the archive for the current architecture, and verify the archive before installation. Apple Silicon is the target platform; the Intel archive is provided for development diagnostics. macOS 14 or later is required.
 
 Run the commands as the ordinary account that will own the monitoring service. Do not run the entire installer with `sudo`; it requests administrator authorization for its installation phase. Terminal does not show characters while you enter the password. Node, Homebrew, and development tools are not required for the installed app.
 
@@ -33,15 +33,15 @@ The service and administrator helper execute directly from the protected bundle.
 
 ## Offline installation
 
-Download the matching `CloudMacMonitor-0.1.2-arm64.tar.gz` or `CloudMacMonitor-0.1.2-x86_64.tar.gz`, its `.sha256` file, and `install.sh` from the same release. Copy them into one directory on the target Mac, review the installer, and run from that directory:
+Download the matching `CloudMacMonitor-0.1.3-arm64.tar.gz` or `CloudMacMonitor-0.1.3-x86_64.tar.gz`, its `.sha256` file, and `install.sh` from the same release. Copy them into one directory on the target Mac, review the installer, and run from that directory:
 
 ```bash
 (
   set -e
   echo "a9ae11d1b5b3590756d3e77c1fa66e32d668f7fb2209c07283ee8a61685c0f13  install.sh" | shasum -a 256 -c -
-  package="CloudMacMonitor-0.1.2-$(uname -m).tar.gz"
+  package="CloudMacMonitor-0.1.3-$(uname -m).tar.gz"
   expected="$(awk '{print $1}' "$package.sha256")"
-  bash install.sh 0.1.2 --local "$package" "$expected"
+  bash install.sh 0.1.3 --local "$package" "$expected"
 )
 ```
 
@@ -51,12 +51,12 @@ The installer checks that the archive matches the version and architecture and v
 
 ### `Writable installation parent: /Applications`
 
-The v0.1.0 installer treated the normal administrator-group write permission on `/Applications` as unsafe and exited before copying the app. Download and run the v0.1.2 installer using the README commands, even if you already have a file named `install.sh`. Do not use `chmod` on `/Applications` to bypass the check.
+The v0.1.0 installer treated the normal administrator-group write permission on `/Applications` as unsafe and exited before copying the app. Download and run the v0.1.3 installer using the README commands, even if you already have a file named `install.sh`. Do not use `chmod` on `/Applications` to bypass the check.
 
-If the error persists with the verified v0.1.2 script, an existing legacy app may have triggered the protected-path migration check. Do not delete the app or installation data as a workaround. Collect the full installer output and these read-only diagnostics for review:
+If the error persists with the verified v0.1.3 script, an existing legacy app may have triggered the protected-path migration check. Do not delete the app or installation data as a workaround. Collect the full installer output and these read-only diagnostics for review:
 
 ```bash
-shasum -a 256 "$HOME/install-0.1.2.sh"
+shasum -a 256 "$HOME/install-0.1.3.sh"
 ls -ld /Applications "/Applications/Cloud Mac Monitor.app" "/Library/Application Support/CloudMacMonitor/Cloud Mac Monitor.app"
 ```
 
@@ -64,7 +64,7 @@ The expected installer digest is `a9ae11d1b5b3590756d3e77c1fa66e32d668f7fb2209c0
 
 ### The app or installer file is missing
 
-`No such file or directory` for `install-0.1.2.sh` means that file is not in the specified directory. The README commands download it into your home directory and run it there. A missing app after an installer error means installation did not complete; the error line is not a success message.
+`No such file or directory` for `install-0.1.3.sh` means that file is not in the specified directory. The README commands download it into your home directory and run it there. A missing app after an installer error means installation did not complete; the error line is not a success message.
 
 ### Checksum mismatch or installation/start failure
 
@@ -81,3 +81,20 @@ For detailed administrator, launchd, recovery, and hardware checks, see [install
 Temperature uses named readings in °C and CPU/graphics/drive peak summaries. Unassigned sensor IDs remain in the list and details; an unavailable sensor is not shown as zero. Connected storage is listed as internal or external, and the Agent reads available ATA/NVMe SMART temperature interfaces once per minute. A drive or enclosure that does not expose this interface may have no readable temperature. Permission failures are shown separately. See Apple's [ATA SMART interface documentation](https://developer.apple.com/documentation/iokit/ioatasmartinterface) for the read interface used by ATA devices.
 
 **Refresh status** rechecks the local monitoring address, network interfaces, and recording state. It does not restart the service or force a new temperature sample. **Local network interface** selects the address used for LAN access; choose an interface, enable LAN, and generate a pairing code to connect a phone or another computer on the same network. Local monitoring does not require LAN access to be enabled.
+
+## Quit and stop behavior
+
+Closing the control window keeps background monitoring active. Explicit Quit (⌘Q) asks the owner-bound Agent to shut down, waits for its PID to exit, and then exits the control app. A failed stop keeps the control app open and reports an error. This stops the current session while preserving the boot preference; use **Start service** to resume. Logging out closes the UI without issuing this owner stop, so the system-domain service can continue.
+
+The LaunchDaemon restarts abnormal exits, including `SIGKILL`. A changed PID after a force kill therefore indicates a new process, not an unkillable original process. Normal owner shutdown exits successfully and is not restarted by `KeepAlive/SuccessfulExit=false`. **Stop service** performs administrator-authorized disable/bootout and also disables automatic startup, as before.
+
+For an older version that cannot be stopped through the UI, the following administrator commands target only Cloud Mac Monitor:
+
+```bash
+sudo launchctl disable system/org.cloudmacmonitor.agent
+sudo launchctl bootout system/org.cloudmacmonitor.agent
+```
+
+After updating, choose **Enable at boot** to restore the disabled service. These commands preserve account and history data. Do not repeatedly force-kill the Agent while its job remains enabled.
+
+Normal sampling now runs once every 10 seconds for system metrics, process rankings, temperatures, and GPU metrics. Low-power or serious thermal conditions use 20 seconds. Drive SMART readings remain cached for 60 seconds. SMC queries share a single connection per batch and cache readable keys; core-cluster rows show their highest reading, with individual IDs available in details.

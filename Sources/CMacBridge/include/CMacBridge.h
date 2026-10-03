@@ -30,6 +30,8 @@ uint64_t cmm_continuous_ns(void);
 int cmm_io_counters(uint64_t *network_read, uint64_t *network_write, uint64_t *disk_read, uint64_t *disk_write);
 int cmm_memory_pressure(void);
 int cmm_smc_temperature(const char key[4], double *value);
+typedef struct { char key[5]; double celsius; int status; } cmm_smc_reading;
+int cmm_smc_temperatures(cmm_smc_reading *values, size_t count);
 int cmm_gpu_percent(double *value);
 typedef struct { char name[128]; double celsius; } cmm_hid_temperature;
 int cmm_hid_temperatures(cmm_hid_temperature *values, size_t capacity);

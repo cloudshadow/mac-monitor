@@ -51,3 +51,9 @@ Certificate verification and HTTP response assertions passed; `/api/v1/snapshot`
 24 小时可设置 `--duration 86400`。物理写放大、浏览器相关进程、M1 三次稳态预算、热/睡眠约束和 2,000 真实进程扫描仍由真机验收补齐。旧 Benchmark 是 feasibility 原型；不要将它的轻量分钟表测量当作完整历史的结果。
 
 最终 Release Agent 的短运行记录见 `artifacts/final-runtime-smoke.json`：Intel 开发机、3 个 loopback 查看者、预热 2 秒/采样 12 秒，服务 CPU 均值约 6.20%/p95 21.84%（单核口径），footprint p95 约 12.6MiB、RSS p95 约 25.2MiB。该窗口覆盖冷启动应用元数据，不足一分钟、未覆盖分钟提交或稳态，不能判定满足预算；完整 Agent 的开销明显高于旧探针，必须按上述 5 分钟预热/30 分钟及目标 M1 场景实测后判断和优化。
+
+## v0.1.3 short Intel diagnostic
+
+A sequential Release-Agent diagnostic on the Intel development host used 15 seconds of warmup and 30 seconds of measurement with no viewers. The observer still issued one authenticated snapshot/apps request per second. v0.1.2 averaged 6.03% of one CPU core (p95 23.36%), compared with 3.17% (p95 5.05%) for v0.1.3. Observed process-scan increments fell from 7 to 3, consistent with the 4-second to 10-second process cadence change. Records: `artifacts/stop-sampling-benchmark-before.json`, `artifacts/stop-sampling-benchmark-after.json`, and `artifacts/stop-sampling-comparison.json`.
+
+This is a short diagnostic, not Apple Silicon acceptance, a steady-state budget result, or a three-run/24-hour performance gate. The default normal cadence is now 10 seconds for system/apps/temperature/GPU; constrained cadence is 20 seconds and drive SMART caching remains 60 seconds.

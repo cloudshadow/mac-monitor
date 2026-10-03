@@ -512,19 +512,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Closing this window keeps monitoring active."
+            "value": "Closing the window keeps monitoring active. Quit (⌘Q) stops monitoring for this session; the boot preference is preserved."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "关闭此窗口后监测继续运行。"
+            "value": "关闭窗口会继续后台监测；退出（⌘Q）会停止本次监测，保留开机启动设置。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "關閉此視窗後監測繼續執行。"
+            "value": "關閉視窗會繼續背景監測；退出（⌘Q）會停止本次監測，保留開機啟動設定。"
           }
         }
       }
@@ -745,6 +745,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "關閉區域網路"
+          }
+        }
+      }
+    },
+    "quitFailed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Monitoring could not be stopped. The app remains open; use Stop service or retry quitting."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未能停止监测，应用保持打开。请使用“停止服务”或重试退出。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未能停止監測，應用程式保持開啟。請使用「停止服務」或重試退出。"
           }
         }
       }

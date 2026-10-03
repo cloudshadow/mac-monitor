@@ -7,7 +7,7 @@
 
 ## Summary
 
-单个 Swift 原生系统域LaunchDaemon业务服务（以指定普通用户身份运行）持续调用 macOS 接口，系统1秒、应用4秒，与查看者数量无关；聚合并缓存指标，向浏览器提供静态网页与 SSE 数据流。最近五分钟优先内存，较早数据读SQLite，详见 [realtime-data-flow.md](realtime-data-flow.md)。
+单个 Swift 原生系统域LaunchDaemon业务服务（以指定普通用户身份运行）持续调用 macOS 接口，系统10秒、应用10秒，与查看者数量无关；聚合并缓存指标，向浏览器提供静态网页与 SSE 数据流。最近五分钟优先内存，较早数据读SQLite，详见 [realtime-data-flow.md](realtime-data-flow.md)。
 支持本机和局域网配对设备的账户登录；React + TypeScript + Vite构建静态网页。内嵌SQLite批量保存30天系统历史与7天应用摘要，减少采集、写盘和页面渲染频率。
 目标为所有 M 系列基础监测；温度/GPU 必须有每个芯片与 macOS 版本的能力记录。
 
@@ -109,7 +109,7 @@ flowchart LR
 ### 历史、传输和React界面
 
 - 实时内存保留最近至少5分钟及至多1分钟衔接余量，每条最多360个1秒槽，上限64序列；应用近期90帧、每帧Top并集最多30组，近期缓冲合计硬上限4MiB。取消原额外55分钟内存层。持久历史按1m/24h、5m/7d、1h/30d分层，应用每5分钟最多30组保留7天；实现规则见 [history-storage.md](history-storage.md)。
-- 每60秒合并系统样本入一个SQLite事务，应用5分钟最终桶复用同一写入节奏；FIFO有界，查询限时，磁盘错误单独降级。无查看者仍4秒扫描进程，1秒系统采样；性能预算按此新配置重新验证，不能沿用旧低频结果。
+- 每60秒合并系统样本入一个SQLite事务，应用5分钟最终桶复用同一写入节奏；FIFO有界，查询限时，磁盘错误单独降级。无查看者仍10秒扫描进程，10秒系统采样；性能预算按此新配置重新验证，不能沿用旧低频结果。
 - SSE的system/capabilities推送最新快照；apps仅推送≤2KiB的scanSequence通知，各页面按自身排序/筛选从共享缓存GET分页。只保存当前应用扫描表，旧游标409；首页实时、翻页暂停替换并提示新数据，查询并发/限流见契约。bootId+sequence防止旧消息覆盖；每连接待发送最多128KiB，慢连接断开。历史走独立有界HTTP查询，不用SSE回放全部历史。
 - 历史系统查询按需加权合并成2h等更粗桶，每序列所有segment/连续段合计≤600点，无法满足返回pointBudgetTooSmall；行数仅作单segment名义估算，实际执行256MiB预算。pause保持近期内存，clear通过history.sqlite内recordingEpoch和串行屏障清除旧队列/缓冲，避免清空后数据重现。
 - React + TypeScript + Vite。React组件负责页面/表单/排行；采样数据用外部store按选择器订阅，通过useSyncExternalStore等方式限制更新范围。Canvas图表只在新数据/尺寸变化时重绘，不保持60fps动画。
@@ -170,3 +170,7 @@ scripts/i18n/                     # 翻译校验、自动注册、TS类型及原
 ## 开源与发行
 
 首选免费预编译包与公开一行安装器；开发、首版打包和安装验证均不依赖Apple付费身份。公证DMG为可选后续渠道，不是首版门槛；源码许可证建议MIT，发布前确定。流程见 [free-command-install.md](free-command-install.md) 与 [signing-and-open-source.md](signing-and-open-source.md)。当前仅有开发工程与探针，没有可用公开安装链接。
+
+## 2026-10-03 stop and sampling revision
+
+用户明确要求 ⌘Q 退出停止 Agent：关闭窗口仍保留后台运行，但显式退出通过服务所有者 IPC 请求 shutdown，确认实际 PID 退出，失败保留控制窗口并显示错误；正常退出状态为 0，KeepAlive/SuccessfulExit=false 不重新拉起。保留开机启动偏好；用户注销／系统退出不误触发手动停止。默认系统、进程、温度、GPU 全部每 10 秒采集一次，低电量／严重热限制为 20 秒；SMART 保持 60 秒缓存。SMC 每批复用一个连接并缓存可读 key。温度命名参考用户指定 MacMonitor 的 M2 SENSORS.md；CPU／GPU 芯片、SoC、邻近、内存及 VRM 明确区分，不宣称已验证此项目的全部机型。

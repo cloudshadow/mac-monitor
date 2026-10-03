@@ -35,8 +35,10 @@ with tempfile.TemporaryDirectory(prefix='cmm-smoke.',dir='/private/tmp') as data
         result=request('/api/v1/auth/setup','POST',{'username':'owner','password':'test-password-12345'},expected=201);csrf=result['csrfToken']
         request('/api/v1/auth/setup','POST',{'username':'second','password':'test-password-12345'},expected=409)
         assert request('/api/v1/auth/session',origin=False)['csrfToken']==csrf
-        time.sleep(5)
+        time.sleep(11)
         snapshot=request('/api/v1/snapshot',origin=False);assert snapshot['cpu']['status']=='ok',snapshot
+        assert snapshot['samplingPolicy']['intervalMs']==10000,snapshot
+        assert snapshot['samplingPolicy']['reason']=='default',snapshot
         apps=request('/api/v1/apps?limit=2',origin=False);assert apps['rows'],apps
         if apps['nextCursor']:request('/api/v1/apps?limit=2&cursor='+urllib.parse.quote(apps['nextCursor']),origin=False)
         request('/api/v1/viewers','POST',{'channels':['system']},headers={'X-CSRF-Token':'invalid'},expected=403)
@@ -56,3 +58,4 @@ with tempfile.TemporaryDirectory(prefix='cmm-smoke.',dir='/private/tmp') as data
         process.terminate()
         try:process.wait(timeout=7)
         except subprocess.TimeoutExpired:process.kill();process.wait()
+        assert process.returncode == 0, ("Agent did not exit normally", process.returncode)

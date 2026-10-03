@@ -1,14 +1,14 @@
 import Foundation
 
-public struct SamplingIntervals: Codable, Sendable {
-  public var system = 1_000, apps = 4_000, temperature = 10_000, gpu = 5_000
+public struct SamplingIntervals: Codable, Sendable, Equatable {
+  public var system = 10_000, apps = 10_000, temperature = 10_000, gpu = 10_000
   public init() {}
   public static var constrained: Self {
     var v = Self()
-    v.system = 5_000
-    v.apps = 10_000
+    v.system = 20_000
+    v.apps = 20_000
     v.temperature = 20_000
-    v.gpu = 10_000
+    v.gpu = 20_000
     return v
   }
 }
@@ -22,13 +22,15 @@ public final class Scheduler: @unchecked Sendable {
   private var lastContinuous: UInt64?, lastWall: Date?
   private var intervals = SamplingIntervals()
   private var paused = false
+  private let wallClock: @Sendable () -> Date
   private let clock: @Sendable () -> UInt64
   private let collect: @Sendable (Channel, Int) -> Void
   private let discontinuity: @Sendable () -> Void
   public init(
     clock: @escaping @Sendable () -> UInt64, collect: @escaping @Sendable (Channel, Int) -> Void,
-    discontinuity: @escaping @Sendable () -> Void
+    discontinuity: @escaping @Sendable () -> Void, wallClock: @escaping @Sendable () -> Date = { Date() }
   ) {
+    self.wallClock = wallClock
     self.clock = clock
     self.collect = collect
     self.discontinuity = discontinuity
@@ -37,7 +39,7 @@ public final class Scheduler: @unchecked Sendable {
     queue.sync {
       guard timer == nil else { return }
       let t = DispatchSource.makeTimerSource(queue: queue)
-      t.schedule(deadline: .now(), repeating: .milliseconds(1_000), leeway: .milliseconds(100))
+      t.schedule(deadline: .now(), repeating: .milliseconds(10_000), leeway: .milliseconds(500))
       t.setEventHandler { [weak self] in self?.tick() }
       timer = t
       t.resume()
@@ -45,6 +47,7 @@ public final class Scheduler: @unchecked Sendable {
   }
   public func configure(_ value: SamplingIntervals) {
     queue.async { [self] in
+      guard intervals != value else { return }
       intervals = value
       deadlines.removeAll()
     }
@@ -71,13 +74,13 @@ public final class Scheduler: @unchecked Sendable {
       timer = nil
     }
   }
-  private func tick() {
+  func tick() {
     guard !paused else { return }
     let now = clock()
-    let wall = Date()
+    let wall = wallClock()
     if let old = lastContinuous, let oldWall = lastWall {
       let seconds = now >= old ? Double(now - old) / 1_000_000_000 : Double.infinity
-      if seconds > 3 || abs(wall.timeIntervalSince(oldWall) - seconds) > 2 {
+      if seconds > 30 || abs(wall.timeIntervalSince(oldWall) - seconds) > 2 {
         deadlines.removeAll()
         discontinuity()
       }

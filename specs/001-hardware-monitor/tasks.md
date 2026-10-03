@@ -146,3 +146,12 @@ Setup（G0/G4真机验收延至发行前） → Foundation → 账户认证 → 
 - [x] T052 Explain refresh status and LAN interface selection in all three control-window languages; remove the separate account-creation button.
 
 External enclosure temperature availability and target-Mac GUI/hardware acceptance remain user validation tasks.
+
+## 2026-10-03 stop and sampling revision
+
+- [x] T053 Add owner IPC shutdown and explicit successful Agent exit; wire native Quit to wait for actual PID exit and retain the UI on failure. Keep window-close/background and logout behavior distinct.
+- [x] T054 Set default system/apps/temperature/GPU intervals to 10 seconds and constrained intervals to 20 seconds; update scheduler gap detection, capability reporting, sample publication, and web freshness behavior.
+- [x] T055 Add named M2 reference SMC definitions, separate VRM/proximity/SoC from CPU/GPU die categories, batch SMC reads through one connection, cache readable keys, and group core-array peaks with raw details.
+- [x] T056 Add scheduler/reference regression tests and a temporary user-domain launchd smoke proving intentional stop, explicit restart, SIGKILL restart, and subsequent intentional stop.
+
+Native ⌘Q UI behavior and the installed system-domain job still need target-Mac acceptance.

@@ -60,3 +60,4 @@ with tempfile.TemporaryDirectory(prefix='cmm-lan.',dir='/private/tmp') as root:
   p.terminate()
   try:p.wait(timeout=7)
   except subprocess.TimeoutExpired:p.kill();p.wait()
+  assert p.returncode == 0, ("Agent did not exit normally", p.returncode)

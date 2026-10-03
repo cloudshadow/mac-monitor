@@ -153,23 +153,38 @@ typedef struct {
     uint8_t bytes[32];
 } cmm_smc_message;
 static uint32_t cmm_fourcc(const char *key) { return (uint32_t)(uint8_t)key[0]<<24 | (uint32_t)(uint8_t)key[1]<<16 | (uint32_t)(uint8_t)key[2]<<8 | (uint8_t)key[3]; }
-int cmm_smc_temperature(const char key[4], double *value) {
-    io_service_t service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("AppleSMC"));
-    if (!service) return ENOTSUP;
-    io_connect_t connection = 0;
-    kern_return_t code = IOServiceOpen(service, mach_task_self(), 0, &connection); IOObjectRelease(service);
-    if (code != KERN_SUCCESS) return EACCES;
+static int cmm_smc_read(io_connect_t connection, const char key[4], double *value) {
     cmm_smc_message input = {0}, output = {0}; size_t size = sizeof(output);
     input.key = cmm_fourcc(key); input.command = 9;
-    code = IOConnectCallStructMethod(connection, 2, &input, sizeof(input), &output, &size);
-    if (code || output.result || output.info.size > 32) { IOServiceClose(connection); return ENOTSUP; }
+    kern_return_t code = IOConnectCallStructMethod(connection, 2, &input, sizeof(input), &output, &size);
+    if (code || output.result || output.info.size > 32) return ENOTSUP;
     input.info = output.info; input.command = 5; uint32_t type = output.info.type; size = sizeof(output);
-    code = IOConnectCallStructMethod(connection, 2, &input, sizeof(input), &output, &size); IOServiceClose(connection);
+    code = IOConnectCallStructMethod(connection, 2, &input, sizeof(input), &output, &size);
     if (code || output.result) return EIO;
     if (type == cmm_fourcc("sp78") && input.info.size == 2) { int16_t raw = (int16_t)((output.bytes[0]<<8)|output.bytes[1]); *value = raw/256.0; }
     else if (type == cmm_fourcc("flt ") && input.info.size == 4) { float raw; memcpy(&raw, output.bytes, 4); *value = raw; }
     else return ENOTSUP;
     return isfinite(*value) && *value >= -20 && *value <= 130 ? 0 : EIO;
+}
+int cmm_smc_temperatures(cmm_smc_reading *values, size_t count) {
+    if (!values || count > 128) return EINVAL;
+    io_service_t service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("AppleSMC"));
+    io_connect_t connection = 0;
+    int status = ENOTSUP;
+    if (service) {
+        kern_return_t code = IOServiceOpen(service, mach_task_self(), 0, &connection);
+        IOObjectRelease(service);
+        status = code == KERN_SUCCESS ? 0 : EACCES;
+    }
+    for (size_t i = 0; i < count; i++) values[i].status = status ? status : cmm_smc_read(connection, values[i].key, &values[i].celsius);
+    if (connection) IOServiceClose(connection);
+    return status;
+}
+int cmm_smc_temperature(const char key[4], double *value) {
+    cmm_smc_reading reading = {0}; memcpy(reading.key, key, 4);
+    cmm_smc_temperatures(&reading, 1);
+    if (!reading.status) *value = reading.celsius;
+    return reading.status;
 }
 int cmm_gpu_percent(double *value) {
     io_iterator_t iterator = 0;

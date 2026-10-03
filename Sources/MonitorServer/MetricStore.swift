@@ -64,10 +64,10 @@ public final class MetricStore: @unchecked Sendable {
       snapshot["serverTime"] = .date(sample.sampledAt)
       snapshot["generatedAt"] = .date(sample.sampledAt)
       snapshot["ageMs"] = .number(0)
-      snapshot["mode"] = .string(interval > 1000 ? "constrained" : "normal")
+      snapshot["mode"] = .string(interval > 10000 ? "constrained" : "normal")
       snapshot["samplingPolicy"] = .object([
         "intervalMs": .number(Double(interval)),
-        "reason": .string(interval > 1000 ? "powerOrThermalConstraint" : "default"),
+        "reason": .string(interval > 10000 ? "powerOrThermalConstraint" : "default"),
       ])
       state.withLock { s in
         s.sequence += 1
@@ -136,7 +136,12 @@ public final class MetricStore: @unchecked Sendable {
           fields["seriesId"] = .string("temperature:" + String(Crypto.hash(id).prefix(24)))
           return .object(fields)
         })
+        s.intervals["temperature"] = .number(Double(interval))
+        data["effectiveIntervals"] = .object(s.intervals)
+        s.sequence += 1
+        data["sequence"] = .string(String(s.sequence))
         s.snapshot = .object(data)
+        s.encodedSnapshot = (try? s.snapshot.data()) ?? Data("{}".utf8)
       }
     case .gpu:
       let metric = SensorCollector.gpu(intervalMs: interval)
@@ -152,7 +157,12 @@ public final class MetricStore: @unchecked Sendable {
       state.withLock { s in
         guard case .object(var data) = s.snapshot else { return }
         data["gpu"] = value ?? .null
+        s.intervals["gpu"] = .number(Double(interval))
+        data["effectiveIntervals"] = .object(s.intervals)
+        s.sequence += 1
+        data["sequence"] = .string(String(s.sequence))
         s.snapshot = .object(data)
+        s.encodedSnapshot = (try? s.snapshot.data()) ?? Data("{}".utf8)
       }
     }
   }
@@ -165,6 +175,8 @@ public final class MetricStore: @unchecked Sendable {
       return .object(data)
     }
   }
+  public var sampleSequence: String { state.withLock { String($0.sequence) } }
+  public var appSequence: String { state.withLock { $0.apps["scanSequence"].string ?? "0" } }
   public var encodedSnapshot: Data { state.withLock { $0.encodedSnapshot } }
   public var encodedAppNotification: Data { state.withLock { $0.encodedApps } }
   private static func notification(_ s: PublishedMetrics, age: Double) -> JSONValue {
@@ -187,7 +199,7 @@ public final class MetricStore: @unchecked Sendable {
       "logicalCPUCount": .number(Double(ProcessInfo.processInfo.activeProcessorCount)),
       "temperature": .object(["verified": .bool(false)]),
       "gpu": .object(["verified": .bool(false)]),
-      "samplingIntervals": .object(["system": .number(1000), "apps": .number(4000)]),
+      "samplingIntervals": .object(["system": .number(10000), "apps": .number(10000), "temperature": .number(10000), "gpu": .number(10000)]),
     ])
   }
   public func apps(

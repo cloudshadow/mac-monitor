@@ -149,7 +149,7 @@ function App() {
                 {t("common:offline")}
               </p>
             )}
-            {age > 5 && <p className="notice">{t("common:stale")}</p>}
+            {age > Math.max(15, (metrics.snapshot.samplingPolicy?.intervalMs ?? 10000) / 1000 * 2) && <p className="notice">{t("common:stale")}</p>}
             {page === "overview" ? (
               <Overview />
             ) : page === "applications" ? (

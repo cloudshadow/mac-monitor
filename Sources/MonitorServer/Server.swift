@@ -465,8 +465,7 @@ private final class RequestHandler: ChannelInboundHandler, @unchecked Sendable {
         if channels.contains("system") || channels.contains("temperature")
           || channels.contains("gpu")
         {
-          let value = server.metrics.snapshot
-          let key = value["sampledAt"].string ?? ""
+          let key = server.metrics.sampleSequence
           if key != lastSystem {
             lastSystem = key
             if let json = String(data: server.metrics.encodedSnapshot, encoding: .utf8) {
@@ -475,8 +474,7 @@ private final class RequestHandler: ChannelInboundHandler, @unchecked Sendable {
           }
         }
         if channels.contains("apps") {
-          let value = server.metrics.appNotification
-          let key = value["scanSequence"].string ?? ""
+          let key = server.metrics.appSequence
           if key != lastApps {
             lastApps = key
             if server.metrics.encodedAppNotification.count <= 2048,

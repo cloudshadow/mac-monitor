@@ -49,3 +49,13 @@ Four installation regression tests cover the default directory policy, managed l
 Temperature now uses named °C rows and CPU/graphics/drive peak rings, with opaque SMC IDs retained in details rather than assigned an unverified hardware role. HID discovery allows up to 64 readings. Internal/external drive discovery includes read-only ATA/NVMe SMART temperature reads cached for 60 seconds; unavailable interfaces and permission failures remain explicit.
 
 The first local page shows account creation directly without a control-window ticket. Same-origin/Host checks, atomic single-account creation, damaged-state refusal, and the LAN setup prohibition remain in place. Control-window refresh and LAN explanations are localized in all three languages. Development checks include 24 Swift tests, three localization validator tests, HTTP/TLS smoke tests, and two browser tests including 360px temperature layout. External enclosure behavior and native administrator/UI checks require target hardware.
+
+## v0.1.3 stop and sampling correction
+
+Explicit native Quit (⌘Q) now sends owner-bound shutdown IPC, confirms actual Agent PID exit, and keeps the UI open if stopping fails. Window-close remains a background-monitoring action; system logout/restart does not issue the manual owner stop. The Agent exits with status 0 after a bounded shutdown, so KeepAlive/SuccessfulExit=false does not restart an intentional stop. Boot preference is preserved; administrator Stop service still disables and bootouts the job.
+
+System/apps/temperature/GPU collection is now 10 seconds by default and 20 seconds under low-power/serious thermal constraints. Scheduler wakeup and gap detection, API capabilities, SSE publication, and web freshness match the lower frequency. SMC batch queries reuse one connection and cache readable keys. Reference temperature names follow the user-provided MacMonitor M2 SENSORS.md, separating die hotspots, SoC, proximity, memory, and VRM; raw IDs remain available and model attribution is not claimed as independently validated.
+
+27 Swift tests, localization checks, HTTP/TLS/browser checks, and a temporary per-user launchd fixture cover the changes. The fixture confirms owner shutdown, SIGTERM exit, no successful-stop respawn, explicit restart, and abnormal-exit respawn. This is not installed system-domain or native ⌘Q hardware acceptance.
+
+The shutdown regression reproduced a Swift 6 main-actor executor assertion in the old signal callback and a main-actor shutdown task blocked by the top-level semaphore wait. Explicit Sendable signal callbacks and detached shutdown work fix both. HTTP/TLS smoke cleanup now asserts exit status 0, so a crash during cleanup cannot count as a passing shutdown.

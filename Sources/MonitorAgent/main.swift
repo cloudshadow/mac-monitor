@@ -25,25 +25,33 @@ let web =
 let semaphore = DispatchSemaphore(value: 0)
 signal(SIGTERM, SIG_IGN)
 signal(SIGINT, SIG_IGN)
+// Swift 6 top-level code is MainActor-isolated. Explicit Sendable callbacks must
+// run on the signal queue without inheriting that actor's executor assertion.
+let wake: @Sendable () -> Void = { [semaphore] in semaphore.signal() }
+let term = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .global())
+let interrupt = DispatchSource.makeSignalSource(signal: SIGINT, queue: .global())
+term.setEventHandler(handler: wake)
+interrupt.setEventHandler(handler: wake)
+term.resume()
+interrupt.resume()
 let runtime: AgentRuntime
 do {
-  runtime = try AgentRuntime(root: root, webRoot: web)
+  runtime = try AgentRuntime(root: root, webRoot: web, requestExit: wake)
   try runtime.start(port: Int(options["--port"] ?? "8765") ?? 8765)
 } catch {
   FileHandle.standardError.write(Data("MonitorAgent could not start: \(error)\n".utf8))
   exit((error as? APIError)?.code == "startupCircuitOpen" ? 0 : 78)
 }
 FileHandle.standardError.write(Data("MonitorAgent ready at \(runtime.address)\n".utf8))
-let term = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .global())
-let interrupt = DispatchSource.makeSignalSource(signal: SIGINT, queue: .global())
-term.setEventHandler { semaphore.signal() }
-interrupt.setEventHandler { semaphore.signal() }
-term.resume()
-interrupt.resume()
 semaphore.wait()
 let finished = DispatchSemaphore(value: 0)
-Task {
+// A main-actor Task cannot run while this top-level thread waits for completion.
+Task.detached { [runtime, finished] in
   await runtime.shutdown()
   finished.signal()
 }
-_ = finished.wait(timeout: .now() + 5)
+if finished.wait(timeout: .now() + 5) != .success {
+  FileHandle.standardError.write(Data("MonitorAgent shutdown deadline reached; exiting.\n".utf8))
+}
+// Explicit successful exit prevents KeepAlive/SuccessfulExit=false from restarting a deliberate stop.
+exit(0)

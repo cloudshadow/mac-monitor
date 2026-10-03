@@ -82,7 +82,7 @@ export function Overview() {
               ] ?? "nominal")) as "dashboard:nominal",
           )}
         </p>
-        {snapshot.samplingPolicy?.intervalMs > 1000 && (
+        {snapshot.samplingPolicy?.reason === "powerOrThermalConstraint" && (
           <p>{t("common:powerOrThermalConstraint")}</p>
         )}
       </section>

@@ -1,10 +1,12 @@
 import CoreImage.CIFilterBuiltins
+import CoreServices
 import Darwin
 import MonitorCore
 import MonitorIPC
 import SwiftUI
 
 @MainActor final class ControlModel: ObservableObject {
+  static var current: ControlModel?
   @Published var status: JSONValue = .null
   @Published var serviceStatus: JSONValue = .null
   @Published var error = ""
@@ -29,6 +31,7 @@ import SwiftUI
       }
       owner = uid_t(config?["ownerUid"].number ?? Double(UInt32.max))
     }
+    Self.current = self
   }
   func send(
     _ command: String, arguments: [String: JSONValue] = [:], then: ((JSONValue) -> Void)? = nil
@@ -49,6 +52,27 @@ import SwiftUI
         then?(result)
       } catch { self.error = NativeKeys.error() }
       busy = false
+    }
+  }
+  func quit(_ completion: @escaping (Bool) -> Void) {
+    let path = socketPath, uid = owner
+    Task {
+      do {
+        try await Task.detached {
+          guard FileManager.default.fileExists(atPath: path) else { return }
+          let response = try LocalControl.request(path: path, ownerUid: uid, body: .object(["command": .string("shutdown")]))
+          guard let number = response["pid"].number, number > 1, number <= Double(Int32.max) else { throw APIError(503, "controlUnavailable") }
+          let pid = pid_t(number)
+          // Confirm actual process exit, not merely removal of its control socket.
+          let deadline = Date().addingTimeInterval(7)
+          while kill(pid, 0) == 0, Date() < deadline { try await Task.sleep(for: .milliseconds(100)) }
+          guard kill(pid, 0) != 0, errno == ESRCH else { throw APIError(503, "controlTimeout") }
+        }.value
+        completion(true)
+      } catch {
+        self.error = NativeKeys.quitFailed()
+        completion(false)
+      }
     }
   }
   func refresh() { send("status") { self.status = $0 } }
@@ -96,7 +120,20 @@ import SwiftUI
     busy = false
   }
 }
+@MainActor final class ControlAppDelegate: NSObject, NSApplicationDelegate {
+  func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+    // Logout/restart closes the UI without changing the independent system service.
+    if let reason = NSAppleEventManager.shared().currentAppleEvent?.paramDescriptor(forKeyword: AEKeyword(kAEQuitReason))?.enumCodeValue,
+      [AEKeyword(kAEQuitAll), AEKeyword(kAEShutDown), AEKeyword(kAERestart), AEKeyword(kAEReallyLogOut)].contains(reason) {
+      return .terminateNow
+    }
+    guard let model = ControlModel.current else { return .terminateNow }
+    model.quit { sender.reply(toApplicationShouldTerminate: $0) }
+    return .terminateLater
+  }
+}
 @main struct MonitorControlApp: App {
+  @NSApplicationDelegateAdaptor(ControlAppDelegate.self) private var delegate
   var body: some Scene {
     WindowGroup("Cloud Mac Monitor") { ControlView() }.windowResizability(.contentSize)
   }
