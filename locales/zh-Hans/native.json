@@ -33,5 +33,9 @@
   "lanInterface": "局域网接口",
   "lanHelp": "供同一网络的手机或其他电脑访问：选择接口，开启局域网，再生成配对码。本机监测无需开启局域网。",
   "disableLAN": "关闭局域网",
-  "quitFailed": "未能停止监测，应用保持打开。请使用“停止服务”或重试退出。"
+  "quitFailed": "后台服务未确认停止（{code}）。控制窗口将关闭，监控可能仍在运行。",
+  "version": "版本 {version} · 构建 {build}",
+  "serviceUnavailable": "后台服务不可用（{code}）。请点击“启动服务”；如果服务已禁用，请先启用开机启动。",
+  "actionFailed": "操作未完成（{code}）。",
+  "browserFailed": "无法打开浏览器，请将监控地址复制到浏览器。"
 }

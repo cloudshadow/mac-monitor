@@ -33,5 +33,9 @@
   "lanInterface": "Local network interface",
   "lanHelp": "For phones and other computers on the same network: choose an interface, enable LAN, then create a pairing code. Local monitoring works with LAN disabled.",
   "disableLAN": "Disable LAN",
-  "quitFailed": "Monitoring could not be stopped. The app remains open; use Stop service or retry quitting."
+  "quitFailed": "The service did not confirm shutdown ({code}). The control window will close; monitoring may still be running.",
+  "version": "Version {version} · build {build}",
+  "serviceUnavailable": "The service is unavailable ({code}). Click Start service; if disabled, enable it at boot first.",
+  "actionFailed": "Could not complete this action ({code}).",
+  "browserFailed": "The browser could not be opened. Copy the monitor address into your browser."
 }

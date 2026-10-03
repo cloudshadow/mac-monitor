@@ -6,20 +6,20 @@ The software implementation and development-machine checks are complete. Apple S
 
 ## Install the prerelease
 
-Use [v0.1.4](https://github.com/cloudshadow/mac-monitor/releases/tag/v0.1.4). The v0.1.0 installer rejected normal `/Applications` permissions and could exit before installing anything. Run the following commands using the intended ordinary service-owner account. They select the archive for Apple Silicon or Intel and verify the installer and archive checksums:
+Use [v0.1.5](https://github.com/cloudshadow/mac-monitor/releases/tag/v0.1.5). The v0.1.0 installer rejected normal `/Applications` permissions and could exit before installing anything. Run the following commands using the intended ordinary service-owner account. They select the archive for Apple Silicon or Intel and verify the installer and archive checksums:
 
 ```bash
 (
   set -e
   cd "$HOME"
-  curl -fL https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.4/install.sh -o install-0.1.4.sh
-  echo "a9ae11d1b5b3590756d3e77c1fa66e32d668f7fb2209c07283ee8a61685c0f13  install-0.1.4.sh" | shasum -a 256 -c -
+  curl -fL https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.5/install.sh -o install-0.1.5.sh
+  echo "a9ae11d1b5b3590756d3e77c1fa66e32d668f7fb2209c07283ee8a61685c0f13  install-0.1.5.sh" | shasum -a 256 -c -
   case "$(uname -m)" in
-    arm64) checksum=0e4ce2499b846ec5332959ab489084891ffadb0d07fed8991eabb51b1f962ae9 ;;
-    x86_64) checksum=7f2ae34846044948a0a2e2e9ea9a3f56243c0e4d1e1ddadee20ceaddde8d1215 ;;
+    arm64) checksum=490e48458d2b8ccefd1af2f1ec61fc96df258384079a947abc08cf129fe7ab20 ;;
+    x86_64) checksum=9abdf1a1b42910997720489f92cb7c9cca8bddfd085adc3bda2a7191fafd3a53 ;;
     *) echo "Unsupported architecture"; exit 1 ;;
   esac
-  bash install-0.1.4.sh 0.1.4 https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.4 "$checksum"
+  bash install-0.1.5.sh 0.1.5 https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.5 "$checksum"
 )
 ```
 
@@ -29,7 +29,7 @@ Review the installer before running it. Downloads run without administrator priv
 open "/Applications/Cloud Mac Monitor.app"
 ```
 
-Closing the control window keeps monitoring active. Quit (⌘Q) stops the Agent for the current session without changing the boot preference; use Start service to resume. Open the web interface from the control window. On first local access, the page shows the account creation form directly; no separate control-window setup action is required. The app uses free ad-hoc signing; first-launch macOS approval and policy restrictions remain part of hardware acceptance testing. See the [installation guide](docs/installation.md) for installed paths, offline installation, and troubleshooting. Do not change `/Applications` permissions to work around an installer error.
+Closing the control window keeps monitoring active. Quit (⌘Q) stops the Agent for the current session without changing the boot preference; use Start service or Open monitor to resume. Open monitor refreshes the address and can request administrator authorization to restart an installed service. If shutdown fails, the app warns that monitoring may still be running and allows the control window to close. The control window and web header display version information. On first local access, the page shows the account creation form directly; no separate control-window setup action is required. The app uses free ad-hoc signing; first-launch macOS approval and policy restrictions remain part of hardware acceptance testing. See the [installation guide](docs/installation.md) for installed paths, offline installation, and troubleshooting. Do not change `/Applications` permissions to work around an installer error.
 
 The release includes arm64 and x86_64 archives, individual checksum files, and `SHA256SUMS`. Apple Silicon is the target for this release; the Intel package is provided for development diagnostics.
 
@@ -69,18 +69,18 @@ Production ownership is bound by the installer to an ordinary UID and its Genera
 ## Package the app
 
 ```bash
-bash scripts/package-app.sh 0.1.4
-CMM_ARCH=arm64 bash scripts/package-app.sh 0.1.4
+bash scripts/package-app.sh 0.1.5
+CMM_ARCH=arm64 bash scripts/package-app.sh 0.1.5
 ```
 
-These commands produce `artifacts/CloudMacMonitor-0.1.4-<arch>.tar.gz`, its SHA-256 checksum file, and `artifacts/package/<arch>/Cloud Mac Monitor.app`. An Intel development machine can cross-compile the Apple Silicon package, but runtime compatibility still requires testing on the target hardware.
+These commands produce `artifacts/CloudMacMonitor-0.1.5-<arch>.tar.gz`, its SHA-256 checksum file, and `artifacts/package/<arch>/Cloud Mac Monitor.app`. An Intel development machine can cross-compile the Apple Silicon package, but runtime compatibility still requires testing on the target hardware.
 
 For offline installation, copy the matching archive, checksum file, and installer to the target Mac. Review the script and run it as the intended ordinary owner; the installer requests administrator authorization:
 
 ```bash
-package="artifacts/CloudMacMonitor-0.1.4-$(uname -m).tar.gz"
+package="artifacts/CloudMacMonitor-0.1.5-$(uname -m).tar.gz"
 expected="$(awk '{print $1}' "$package.sha256")"
-bash scripts/install.sh 0.1.4 --local "$package" "$expected"
+bash scripts/install.sh 0.1.5 --local "$package" "$expected"
 ```
 
 The download installer also accepts `scripts/install.sh VERSION HTTPS_RELEASE_BASE SHA256`. Its administrator phase rechecks the archive in a root-owned staging directory, rejects traversal and links, and installs the fixed app and LaunchDaemon paths. Upgrades preserve the account, history, and previous service-start preferences. The installer accepts the standard root:admin 775 permissions on `/Applications` without changing them. It stores the actual app in `/Library/Application Support/CloudMacMonitor/Cloud Mac Monitor.app` under root-owned, non-writable parents and creates a managed entry-point link at `/Applications/Cloud Mac Monitor.app`. The LaunchDaemon and administrator tool use the protected app path directly. Other installation parents remain strictly protected. The native update checker requires a configured `ReleaseRepository`; it is not configured in the current package.

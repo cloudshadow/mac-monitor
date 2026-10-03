@@ -15,9 +15,19 @@ import SwiftUI
   @Published var certificate = ""
   @Published var devices: [JSONValue] = []
   @Published var update: AvailableUpdate?
+  var reportShutdownFailure: (String) -> Void = { message in
+    let alert = NSAlert()
+    alert.messageText = NativeKeys.title()
+    alert.informativeText = message
+    alert.addButton(withTitle: "OK")
+    alert.runModal()
+  }
   private let socketPath: String, owner: uid_t
-  init() {
-    if let index = CommandLine.arguments.firstIndex(of: "--data-root"),
+  init(socketPath testPath: String? = nil, ownerUid testOwner: uid_t? = nil) {
+    if let testPath, let testOwner {
+      socketPath = testPath
+      owner = testOwner
+    } else if let index = CommandLine.arguments.firstIndex(of: "--data-root"),
       index + 1 < CommandLine.arguments.count
     {
       socketPath = CommandLine.arguments[index + 1] + "/run/control.sock"
@@ -34,7 +44,8 @@ import SwiftUI
     Self.current = self
   }
   func send(
-    _ command: String, arguments: [String: JSONValue] = [:], then: ((JSONValue) -> Void)? = nil
+    _ command: String, arguments: [String: JSONValue] = [:],
+    onFailure: ((any Error) -> Void)? = nil, then: ((JSONValue) -> Void)? = nil
   ) {
     guard !busy else { return }
     busy = true
@@ -50,7 +61,15 @@ import SwiftUI
           try LocalControl.request(path: path, ownerUid: uid, body: body)
         }.value
         then?(result)
-      } catch { self.error = NativeKeys.error() }
+      } catch {
+        if command == "status" { status = .null }
+        self.error = command == "status"
+          ? NativeKeys.serviceUnavailable(code: Self.code(error))
+          : NativeKeys.actionFailed(code: Self.code(error))
+        busy = false
+        onFailure?(error)
+        return
+      }
       busy = false
     }
   }
@@ -70,22 +89,38 @@ import SwiftUI
         }.value
         completion(true)
       } catch {
-        self.error = NativeKeys.quitFailed()
-        completion(false)
+        // A stale socket or failed Agent must never trap the user in the UI.
+        let message = NativeKeys.quitFailed(code: Self.code(error))
+        self.error = message
+        reportShutdownFailure(message)
+        completion(true)
       }
     }
   }
-  func refresh() { send("status") { self.status = $0 } }
+  func refresh() { send("status", then: { self.status = $0 }) }
   func openMonitor() {
-    if let value = status["address"].string, let url = URL(string: value) {
-      NSWorkspace.shared.open(url)
-    }
+    // Re-read the address: it may be missing or stale after stopping/restarting.
+    send("status", onFailure: { error in
+      if Self.code(error) == "controlUnavailable", self.owner == getuid(),
+        FileManager.default.fileExists(atPath: InstallationLayout.maintenance) {
+        self.maintenance("start", openWhenReady: true)
+      }
+    }, then: { result in
+      self.status = result
+      if let value = result["address"].string, let url = URL(string: value),
+        url.scheme == "http", url.host == "127.0.0.1" {
+        if !NSWorkspace.shared.open(url) { self.error = NativeKeys.browserFailed() }
+      } else { self.error = NativeKeys.serviceUnavailable(code: "addressUnavailable") }
+    })
+  }
+  private static func code(_ error: any Error) -> String {
+    (error as? APIError)?.code ?? "controlUnavailable"
   }
   func pair() {
-    send("pair") {
+    send("pair", then: {
       self.pairingURL = $0["url"].string ?? ""
       self.certificate = $0["caCertificate"].string ?? ""
-    }
+    })
   }
   func checkUpdates() {
     guard !busy else { return }
@@ -95,7 +130,7 @@ import SwiftUI
       busy = false
     }
   }
-  func maintenance(_ action: String) {
+  func maintenance(_ action: String, openWhenReady: Bool = false) {
     guard
       ["status", "enable", "start", "disable", "stop", "uninstall", "uninstallData"].contains(
         action), !busy
@@ -105,19 +140,49 @@ import SwiftUI
     busy = true
     error = ""
     // Runs in this app; enum-only arguments enter the fixed privileged executable.
-    var errorInfo: NSDictionary?
-    let result = NSAppleScript(source: script)?.executeAndReturnError(&errorInfo)
-    if errorInfo != nil {
-      error = NativeKeys.error()
-    } else if let string = result?.stringValue, let data = string.data(using: .utf8),
-      let value = try? JSONDecoder().decode(JSONValue.self, from: data)
-    {
-      if value["error"] != .null {
-        serviceStatus = value["actual"]
-        error = NativeKeys.error()
-      } else { serviceStatus = value }
+    Task {
+      // Authorization/launchctl can take seconds. Keep the AppKit event loop free.
+      let value = await Task.detached { () -> JSONValue? in
+        var errorInfo: NSDictionary?
+        let result = NSAppleScript(source: script)?.executeAndReturnError(&errorInfo)
+        guard errorInfo == nil, let string = result?.stringValue,
+          let data = string.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode(JSONValue.self, from: data)
+      }.value
+      if let value {
+        if value["error"] != .null {
+          serviceStatus = value["actual"]
+          error = NativeKeys.actionFailed(code: value["error"]["code"].string ?? "maintenanceFailed")
+        } else { serviceStatus = value }
+      } else { error = NativeKeys.error() }
+      busy = false
+      if value?["error"] == .null, ["start", "enable"].contains(action) {
+        // launchctl returning successfully does not mean IPC is ready yet.
+        if await refreshAfterStart(), openWhenReady { openMonitor() }
+      } else if ["stop", "uninstall", "uninstallData"].contains(action) {
+        status = .null
+      }
     }
-    busy = false
+  }
+  private func refreshAfterStart() async -> Bool {
+    busy = true
+    defer { busy = false }
+    let path = socketPath, uid = owner
+    let deadline = Date().addingTimeInterval(7)
+    while Date() < deadline {
+      do {
+        status = try await Task.detached {
+          try LocalControl.request(path: path, ownerUid: uid, body: .object(["command": .string("status")]))
+        }.value
+        error = ""
+        return true
+      } catch {
+        self.error = NativeKeys.serviceUnavailable(code: Self.code(error))
+      }
+      try? await Task.sleep(for: .milliseconds(250))
+    }
+    status = .null
+    return false
   }
 }
 @MainActor final class ControlAppDelegate: NSObject, NSApplicationDelegate {
@@ -159,7 +224,13 @@ struct ControlView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
       HStack {
-        Text(NativeKeys.title()).font(.title2)
+        VStack(alignment: .leading, spacing: 4) {
+          Text(NativeKeys.title()).font(.title2)
+          Text(NativeKeys.version(
+            build: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—",
+            version: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "development"
+          )).font(.caption).foregroundStyle(.secondary)
+        }
         Spacer()
         Picker(NativeKeys.language(), selection: $language) {
           ForEach(NativeLocalization.languages, id: \.self) { meta in
@@ -168,7 +239,7 @@ struct ControlView: View {
         }.frame(width: 150)
       }
       Text(model.status["address"].string ?? NativeKeys.status(state: "—")).foregroundStyle(
-        .secondary)
+        .secondary).textSelection(.enabled)
       HStack {
         Button(NativeKeys.refresh()) { model.refresh() }
         Button(NativeKeys.open()) { model.openMonitor() }
@@ -229,7 +300,7 @@ struct ControlView: View {
           }
         }
       }
-      Button(NativeKeys.devices()) { model.send("devices") { model.devices = $0.array } }
+      Button(NativeKeys.devices()) { model.send("devices", then: { model.devices = $0.array }) }
       ForEach(model.devices, id: \.self) { value in
         HStack {
           Text(value["label"].string ?? "")
@@ -266,11 +337,11 @@ struct ControlView: View {
       .onAppear { model.refresh() }
       .alert(NativeKeys.recover(), isPresented: $showRecovery) {
         Button(NativeKeys.recover(), role: .destructive) {
-          model.send("recoverState") { result in
+          model.send("recoverState", then: { result in
             if let value = result["url"].string, let url = URL(string: value) {
               NSWorkspace.shared.open(url)
             }
-          }
+          })
         }
         Button(NativeKeys.cancel(), role: .cancel) {}
       }

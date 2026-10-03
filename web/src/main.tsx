@@ -106,6 +106,7 @@ function App() {
         <a className="brand" href="/">
           {t("common:title")}
         </a>
+        <span className="version">v{__APP_VERSION__}</span>
         <select
           aria-label={t("settings:language")}
           value={language}

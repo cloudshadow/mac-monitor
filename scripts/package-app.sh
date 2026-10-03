@@ -1,10 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-version="${1:-0.1.4}"
+version="${1:-0.1.5}"
 [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Invalid version' >&2; exit 64; }
 node scripts/i18n/generate.mjs
-npm --prefix web run build
+CMM_VERSION="$version" npm --prefix web run build
 arch="${CMM_ARCH:-$(uname -m)}"
 [[ "$arch" == arm64 || "$arch" == x86_64 ]] || exit 64
 bash scripts/swift.sh build -c release --arch "$arch" -j 4

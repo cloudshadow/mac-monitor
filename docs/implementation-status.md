@@ -63,3 +63,10 @@ The shutdown regression reproduced a Swift 6 main-actor executor assertion in th
 ## v0.1.4 temperature-summary boundary
 
 The frontend now honors explicit sensor categories before falling back to descriptive HID names. A CPU/charger proximity reading classified as system cannot enter the CPU die summary merely because its name contains CPU. Browser fixtures cover a hotter proximity reading and VRM reading excluded from the CPU summary. The v0.1.3 Agent termination and 10-second sampling fixes are unchanged.
+
+
+## v0.1.5 control-window recovery
+
+The v0.1.4 UI could refuse Quit after a failed owner shutdown, and Open monitor silently did nothing when no status address was available. The installed service intentionally remains stopped after a successful Quit; reopening the UI only queried status. Open monitor now refreshes IPC status, attempts administrator-authorized Start for the current owner when the installed service is unavailable, waits for readiness, and opens the current address. Failed status clears stale addresses and shows an error code. Start/Enable refresh status after the Agent becomes ready. Administrator AppleScript runs off the UI event loop. Failed shutdown shows a warning that the Agent may remain running and permits UI exit.
+
+Native version/build and packaged web version are visible. Package version overrides are passed to the web build, so a release does not inherit the web package manifest's development version. Added four control-model tests for stale status, fresh Open queries, failed-shutdown exit, and absent-service exit. The original reported Agent startup failure cannot be identified from historical logs because that installation was removed. Apple Silicon installed-system and native authorization/quit interaction remain target-hardware checks.

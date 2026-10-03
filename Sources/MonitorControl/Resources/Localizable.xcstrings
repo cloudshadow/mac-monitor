@@ -754,19 +754,107 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Monitoring could not be stopped. The app remains open; use Stop service or retry quitting."
+            "value": "The service did not confirm shutdown (%1$@). The control window will close; monitoring may still be running."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "未能停止监测，应用保持打开。请使用“停止服务”或重试退出。"
+            "value": "后台服务未确认停止（%1$@）。控制窗口将关闭，监控可能仍在运行。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "未能停止監測，應用程式保持開啟。請使用「停止服務」或重試退出。"
+            "value": "背景服務未確認停止（%1$@）。控制視窗將關閉，監控可能仍在執行。"
+          }
+        }
+      }
+    },
+    "version": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version %2$@ · build %1$@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "版本 %2$@ · 构建 %1$@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "版本 %2$@ · 建置 %1$@"
+          }
+        }
+      }
+    },
+    "serviceUnavailable": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The service is unavailable (%1$@). Click Start service; if disabled, enable it at boot first."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "后台服务不可用（%1$@）。请点击“启动服务”；如果服务已禁用，请先启用开机启动。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "背景服務無法使用（%1$@）。請點選「啟動服務」；如果服務已停用，請先啟用開機啟動。"
+          }
+        }
+      }
+    },
+    "actionFailed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not complete this action (%1$@)."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "操作未完成（%1$@）。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "操作未完成（%1$@）。"
+          }
+        }
+      }
+    },
+    "browserFailed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The browser could not be opened. Copy the monitor address into your browser."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法打开浏览器，请将监控地址复制到浏览器。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法開啟瀏覽器，請將監控地址複製到瀏覽器。"
           }
         }
       }

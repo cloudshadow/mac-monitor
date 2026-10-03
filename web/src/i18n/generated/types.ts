@@ -185,7 +185,11 @@ export interface MessageParameters {
   "native:lanInterface": {};
   "native:lanHelp": {};
   "native:disableLAN": {};
-  "native:quitFailed": {};
+  "native:quitFailed": {"code": string};
+  "native:version": {"build": string;"version": string};
+  "native:serviceUnavailable": {"code": string};
+  "native:actionFailed": {"code": string};
+  "native:browserFailed": {};
   "pairing:title": {};
   "pairing:label": {};
   "pairing:submit": {};

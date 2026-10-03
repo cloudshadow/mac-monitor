@@ -213,3 +213,6 @@ summary {
 }
 
 @media (max-width: 600px) { .temperature-dial small { font-size: 9px; } }
+
+.version { font-size: 12px; color: #526963; white-space: nowrap; }
+@media (max-width: 480px) { header { flex-wrap: wrap; gap: 10px; } }

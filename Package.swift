@@ -50,6 +50,6 @@ let package = Package(
         .target(name: "MaintenancePrototype", path: "Tools/MaintenanceProbe/Shared"),
         .executableTarget(name: "MaintenanceProbe", dependencies: ["MaintenancePrototype"], path: "Tools/MaintenanceProbe/Control"),
         .executableTarget(name: "MaintenanceProbeHelper", dependencies: ["MaintenancePrototype"], path: "Tools/MaintenanceProbe/Helper"),
-        .testTarget(name: "MonitorCoreTests", dependencies: ["MonitorCore", "MacCollectors", "ProbeSupport", "MaintenancePrototype", "HistoryStore", "MonitorServer", "MonitorIPC"], path: "Tests/MonitorCoreTests"),
+        .testTarget(name: "MonitorCoreTests", dependencies: ["MonitorCore", "MacCollectors", "ProbeSupport", "MaintenancePrototype", "HistoryStore", "MonitorServer", "MonitorIPC", "MonitorControl"], path: "Tests/MonitorCoreTests"),
     ]
 )

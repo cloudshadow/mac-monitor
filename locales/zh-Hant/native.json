@@ -33,5 +33,9 @@
   "lanInterface": "區域網路介面",
   "lanHelp": "供同一網路的手機或其他電腦存取：選擇介面，開啟區域網路，再產生配對碼。本機監測無需開啟區域網路。",
   "disableLAN": "關閉區域網路",
-  "quitFailed": "未能停止監測，應用程式保持開啟。請使用「停止服務」或重試退出。"
+  "quitFailed": "背景服務未確認停止（{code}）。控制視窗將關閉，監控可能仍在執行。",
+  "version": "版本 {version} · 建置 {build}",
+  "serviceUnavailable": "背景服務無法使用（{code}）。請點選「啟動服務」；如果服務已停用，請先啟用開機啟動。",
+  "actionFailed": "操作未完成（{code}）。",
+  "browserFailed": "無法開啟瀏覽器，請將監控地址複製到瀏覽器。"
 }

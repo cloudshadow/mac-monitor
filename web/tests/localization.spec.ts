@@ -39,6 +39,7 @@ test("three languages preserve credentials and use one event stream", async ({
     if (request.url().includes("/events?")) streams.add(request.url());
   });
   await page.goto(base);
+  await expect(page.locator("header .version")).toHaveText("v0.1.5");
   await expect(page.getByRole("heading", { name: "Create your account", exact: true })).toBeVisible();
   await page.getByLabel("Username", { exact: true }).fill("browser-owner");
   await page
