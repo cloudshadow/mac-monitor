@@ -51,5 +51,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_VERSION: ${{ inputs.version }}
         run: |
-          printf 'Cloud Mac Monitor %s\n\nReview docs/release-checklist.md before publication. Ad-hoc packages require macOS approval and local administrator installation.\n' "$RELEASE_VERSION" > release-notes.md
+          printf 'Cloud Mac Monitor %s\n\nThis is a release candidate. Review docs/release-checklist.md before publication; target-hardware acceptance remains required. The app uses ad-hoc signing and may require macOS first-launch approval. Installation requests local administrator authorization.\n' "$RELEASE_VERSION" > release-notes.md
           gh release create "v$RELEASE_VERSION" release-assets/* --draft --title "Cloud Mac Monitor $RELEASE_VERSION" --notes-file release-notes.md
