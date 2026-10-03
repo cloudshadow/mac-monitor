@@ -6,14 +6,30 @@ The software implementation and development-machine checks are complete. Apple S
 
 ## Install the prerelease
 
-Download [v0.1.1](https://github.com/cloudshadow/mac-monitor/releases/tag/v0.1.1), or run the following commands on an Apple Silicon Mac using the intended ordinary service-owner account:
+Use [v0.1.1](https://github.com/cloudshadow/mac-monitor/releases/tag/v0.1.1). The v0.1.0 installer rejected normal `/Applications` permissions and could exit before installing anything. Run the following commands using the intended ordinary service-owner account. They select the archive for Apple Silicon or Intel and verify the installer and archive checksums:
 
 ```bash
-curl -fL https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.1/install.sh -o install.sh
-bash install.sh 0.1.1 https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.1 f796eff07e4ed5e51caeec2eb4e1090ce73464c1ac77a3c8f6a050d0ba2bc706
+(
+  set -e
+  cd "$HOME"
+  curl -fL https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.1/install.sh -o install-0.1.1.sh
+  echo "a9ae11d1b5b3590756d3e77c1fa66e32d668f7fb2209c07283ee8a61685c0f13  install-0.1.1.sh" | shasum -a 256 -c -
+  case "$(uname -m)" in
+    arm64) checksum=f796eff07e4ed5e51caeec2eb4e1090ce73464c1ac77a3c8f6a050d0ba2bc706 ;;
+    x86_64) checksum=e33e15248c0a1383b46c07094f4b5ff9d69b4a92a4e93e6006242a83720d5783 ;;
+    *) echo "Unsupported architecture"; exit 1 ;;
+  esac
+  bash install-0.1.1.sh 0.1.1 https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.1 "$checksum"
+)
 ```
 
-Review the installer before running it. It downloads without administrator privileges, verifies the pinned SHA-256 checksum, and requests administrator authorization for installation. Open `/Applications/Cloud Mac Monitor.app` afterward to create an account. The app uses free ad-hoc signing; first-launch macOS approval and policy restrictions remain part of hardware acceptance testing.
+Review the installer before running it. Downloads run without administrator privileges; installation requests an administrator password, which Terminal does not display as you type. Wait for `Installed. Open /Applications/Cloud Mac Monitor.app; approve Gatekeeper when prompted.` before opening the app:
+
+```bash
+open "/Applications/Cloud Mac Monitor.app"
+```
+
+Use the control window to create an account and open the web interface. The app uses free ad-hoc signing; first-launch macOS approval and policy restrictions remain part of hardware acceptance testing. See the [installation guide](docs/installation.md) for installed paths, offline installation, and troubleshooting. Do not change `/Applications` permissions to work around an installer error.
 
 The release includes arm64 and x86_64 archives, individual checksum files, and `SHA256SUMS`. Apple Silicon is the target for this release; the Intel package is provided for development diagnostics.
 

@@ -1,6 +1,6 @@
 # Installation and G4 validation
 
-Implementation started: 2026-10-03. Prototype label `org.cloudmacmonitor.probe` is isolated from the future production `org.cloudmacmonitor.agent`. No production installer has been implemented.
+For the current prerelease, follow the [installation guide](installation.md). The production installer and protected app layout are implemented; target-machine acceptance remains open. The prototype procedures below are historical development checks, not the normal installation instructions. Prototype label `org.cloudmacmonitor.probe` is isolated from production `org.cloudmacmonitor.agent`.
 
 ## Available prototype
 
