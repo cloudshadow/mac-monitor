@@ -2,7 +2,7 @@
 
 ## Download and install
 
-Use the [v0.1.5 prerelease](https://github.com/cloudshadow/mac-monitor/releases/tag/v0.1.5) and the complete commands in [README: Install the prerelease](../README.md#install-the-prerelease). They download `install-0.1.5.sh`, verify its checksum, select the archive for the current architecture, and verify the archive before installation. Apple Silicon is the target platform; the Intel archive is provided for development diagnostics. macOS 14 or later is required.
+Use the [v0.1.6 prerelease](https://github.com/cloudshadow/mac-monitor/releases/tag/v0.1.6) and the complete commands in [README: Install the prerelease](../README.md#install-the-prerelease). They download `install-0.1.6.sh`, verify its checksum, select the archive for the current architecture, and verify the archive before installation. Apple Silicon is the target platform; the Intel archive is provided for development diagnostics. macOS 14 or later is required.
 
 Run the commands as the ordinary account that will own the monitoring service. Do not run the entire installer with `sudo`; it requests administrator authorization for its installation phase. Terminal does not show characters while you enter the password. Node, Homebrew, and development tools are not required for the installed app.
 
@@ -33,15 +33,15 @@ The service and administrator helper execute directly from the protected bundle.
 
 ## Offline installation
 
-Download the matching `CloudMacMonitor-0.1.5-arm64.tar.gz` or `CloudMacMonitor-0.1.5-x86_64.tar.gz`, its `.sha256` file, and `install.sh` from the same release. Copy them into one directory on the target Mac, review the installer, and run from that directory:
+Download the matching `CloudMacMonitor-0.1.6-arm64.tar.gz` or `CloudMacMonitor-0.1.6-x86_64.tar.gz`, its `.sha256` file, and `install.sh` from the same release. Copy them into one directory on the target Mac, review the installer, and run from that directory:
 
 ```bash
 (
   set -e
-  echo "a9ae11d1b5b3590756d3e77c1fa66e32d668f7fb2209c07283ee8a61685c0f13  install.sh" | shasum -a 256 -c -
-  package="CloudMacMonitor-0.1.5-$(uname -m).tar.gz"
+  echo "e6d3d3272573ae88b3226b28b3a7dcc69a2e055007f954f0ceb2c032fbf9e57e  install.sh" | shasum -a 256 -c -
+  package="CloudMacMonitor-0.1.6-$(uname -m).tar.gz"
   expected="$(awk '{print $1}' "$package.sha256")"
-  bash install.sh 0.1.5 --local "$package" "$expected"
+  bash install.sh 0.1.6 --local "$package" "$expected"
 )
 ```
 
@@ -51,20 +51,24 @@ The installer checks that the archive matches the version and architecture and v
 
 ### `Writable installation parent: /Applications`
 
-The v0.1.0 installer treated the normal administrator-group write permission on `/Applications` as unsafe and exited before copying the app. Download and run the v0.1.5 installer using the README commands, even if you already have a file named `install.sh`. Do not use `chmod` on `/Applications` to bypass the check.
+The v0.1.0 installer treated the normal administrator-group write permission on `/Applications` as unsafe and exited before copying the app. Download and run the v0.1.6 installer using the README commands, even if you already have a file named `install.sh`. Do not use `chmod` on `/Applications` to bypass the check.
 
-If the error persists with the verified v0.1.5 script, an existing legacy app may have triggered the protected-path migration check. Do not delete the app or installation data as a workaround. Collect the full installer output and these read-only diagnostics for review:
+If the error persists with the verified v0.1.6 script, an existing legacy app may have triggered the protected-path migration check. Do not delete the app or installation data as a workaround. Collect the full installer output and these read-only diagnostics for review:
 
 ```bash
-shasum -a 256 "$HOME/install-0.1.5.sh"
+shasum -a 256 "$HOME/install-0.1.6.sh"
 ls -ld /Applications "/Applications/Cloud Mac Monitor.app" "/Library/Application Support/CloudMacMonitor/Cloud Mac Monitor.app"
 ```
 
-The expected installer digest is `a9ae11d1b5b3590756d3e77c1fa66e32d668f7fb2209c07283ee8a61685c0f13`. An unsafe or unmanaged legacy entry is refused rather than executing its helper.
+The expected installer digest is `e6d3d3272573ae88b3226b28b3a7dcc69a2e055007f954f0ceb2c032fbf9e57e`. An unsafe or unmanaged legacy entry is refused rather than executing its helper.
 
 ### The app or installer file is missing
 
-`No such file or directory` for `install-0.1.5.sh` means that file is not in the specified directory. The README commands download it into your home directory and run it there. A missing app after an installer error means installation did not complete; the error line is not a success message.
+`No such file or directory` for `install-0.1.6.sh` means that file is not in the specified directory. The README commands download it into your home directory and run it there. A missing app after an installer error means installation did not complete; the error line is not a success message.
+
+### Missing old MonitorMaintenance after uninstall
+
+Uninstalling while preserving data leaves installation.json but removes the app. Installers through v0.1.5 mistake this for an upgrade and fail with a missing old MonitorMaintenance and Unsafe path. Use the verified v0.1.6 installer above to reinstall with the same owner. It preserves account/history data and restores the removed app and service. Do not delete the saved-data directory. A partial bundle is a separate state and remains refused for review.
 
 ### Checksum mismatch or installation/start failure
 

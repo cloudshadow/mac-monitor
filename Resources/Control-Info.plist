@@ -5,7 +5,7 @@
 <key>CFBundleName</key><string>Cloud Mac Monitor</string>
 <key>CFBundleExecutable</key><string>MonitorControl</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>0.1.5</string>
+<key>CFBundleShortVersionString</key><string>0.1.6</string>
 <key>CFBundleVersion</key><string>1</string>
 <key>LSMinimumSystemVersion</key><string>14.0</string>
 <key>NSHighResolutionCapable</key><true/>

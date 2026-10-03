@@ -89,12 +89,28 @@ if [[ -e "$root/installation.json" ]]; then
   [[ "$(plutil -extract ownerUid raw -o - "$root/installation.json")" == "$owner_uid" && "$(plutil -extract ownerGuid raw -o - "$root/installation.json")" == "$owner_guid" ]] || { echo 'Owner migration requires an explicit reviewed migration.' >&2; exit 1; }
   installed_app="$app"
   if [[ "$legacy" == true ]]; then installed_app="$public_app"; fi
-  protected_parent "$installed_app/Contents/MacOS/MonitorMaintenance"
-  "$installed_app/Contents/MacOS/MonitorMaintenance" status > "$root_stage/before.json"
-  enabled="$(plutil -extract bootEnabled raw -o - "$root_stage/before.json")"
-  if [[ "$(plutil -extract systemEnabled raw -o - "$root_stage/before.json")" != true ]]; then enabled=false; fi
-  if [[ "$enabled" == true && "$(plutil -extract running raw -o - "$root_stage/before.json")" == true ]]; then restart=true; fi
-  "$installed_app/Contents/MacOS/MonitorMaintenance" stop
+  if [[ ! -e "$installed_app" && ! -L "$installed_app" ]]; then
+    # Uninstall preserves installation.json and data unless deletion was requested.
+    # There is no old executable to trust or run in this state.
+    echo 'Reinstalling removed application; existing account and history are preserved.'
+    if [[ ! -e "$root/data" && ! -L "$root/data" ]]; then
+      install -d -m 700 -o "$owner_uid" -g "$(id -g "$owner_name")" "$root/data"
+    fi
+    [[ -d "$root/data" && ! -L "$root/data" && "$(stat -f %u "$root/data")" == "$owner_uid" && "$(stat -f %Lp "$root/data")" == 700 ]] || { echo 'Unsafe existing data directory; nothing replaced.' >&2; exit 1; }
+    if [[ -e "$plist" || -L "$plist" ]]; then protected_parent "$plist"; fi
+    launchctl disable "$job"
+    if launchctl print "$job" >/dev/null 2>&1; then launchctl bootout "$job"; fi
+    # An explicit reinstall restores service availability after Uninstall disabled it.
+    enabled=true
+    restart=true
+  else
+    protected_parent "$installed_app/Contents/MacOS/MonitorMaintenance"
+    "$installed_app/Contents/MacOS/MonitorMaintenance" status > "$root_stage/before.json"
+    enabled="$(plutil -extract bootEnabled raw -o - "$root_stage/before.json")"
+    if [[ "$(plutil -extract systemEnabled raw -o - "$root_stage/before.json")" != true ]]; then enabled=false; fi
+    if [[ "$enabled" == true && "$(plutil -extract running raw -o - "$root_stage/before.json")" == true ]]; then restart=true; fi
+    "$installed_app/Contents/MacOS/MonitorMaintenance" stop
+  fi
 else
   restart=true
   for directory in data; do install -d -m 700 -o "$owner_uid" -g "$(id -g "$owner_name")" "$root/$directory"; done

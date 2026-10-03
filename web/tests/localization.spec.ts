@@ -1,7 +1,8 @@
 import { test, expect } from "@playwright/test";
 import { spawn, type ChildProcess } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, readFileSync } from "node:fs";
 import path from "node:path";
+const version = readFileSync(new URL('../../Resources/Control-Info.plist', import.meta.url), 'utf8').match(/CFBundleShortVersionString<\/key>\s*<string>([^<]+)<\/string>/)![1];
 let process: ChildProcess, base: string, root: string;
 test.beforeAll(async () => {
   root = mkdtempSync("/private/tmp/cmm-browser.");
@@ -39,7 +40,7 @@ test("three languages preserve credentials and use one event stream", async ({
     if (request.url().includes("/events?")) streams.add(request.url());
   });
   await page.goto(base);
-  await expect(page.locator("header .version")).toHaveText("v0.1.5");
+  await expect(page.locator("header .version")).toHaveText("v" + version);
   await expect(page.getByRole("heading", { name: "Create your account", exact: true })).toBeVisible();
   await page.getByLabel("Username", { exact: true }).fill("browser-owner");
   await page
