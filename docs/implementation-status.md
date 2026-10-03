@@ -59,3 +59,7 @@ System/apps/temperature/GPU collection is now 10 seconds by default and 20 secon
 27 Swift tests, localization checks, HTTP/TLS/browser checks, and a temporary per-user launchd fixture cover the changes. The fixture confirms owner shutdown, SIGTERM exit, no successful-stop respawn, explicit restart, and abnormal-exit respawn. This is not installed system-domain or native ⌘Q hardware acceptance.
 
 The shutdown regression reproduced a Swift 6 main-actor executor assertion in the old signal callback and a main-actor shutdown task blocked by the top-level semaphore wait. Explicit Sendable signal callbacks and detached shutdown work fix both. HTTP/TLS smoke cleanup now asserts exit status 0, so a crash during cleanup cannot count as a passing shutdown.
+
+## v0.1.4 temperature-summary boundary
+
+The frontend now honors explicit sensor categories before falling back to descriptive HID names. A CPU/charger proximity reading classified as system cannot enter the CPU die summary merely because its name contains CPU. Browser fixtures cover a hotter proximity reading and VRM reading excluded from the CPU summary. The v0.1.3 Agent termination and 10-second sampling fixes are unchanged.

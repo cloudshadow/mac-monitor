@@ -3,8 +3,9 @@ import type { MessageKey } from "../i18n/generated/types";
 type Sensor = { id: string; label: string; category?: string; family?: string; mappingReference?: string; external?: boolean; metric?: { value?: number; status?: string; source?: string } };
 // Group only descriptive names reported by the provider; opaque SMC keys stay unassigned.
 function group(sensor: Sensor): string {
-  if (["storage", "cpu", "graphics"].includes(sensor.category ?? "")) return sensor.category!;
+  if (sensor.category) return ["storage", "cpu", "graphics"].includes(sensor.category) ? sensor.category : "other";
   const label = sensor.label.toLowerCase();
+  if (/proximity|voltage|regulator|vrm|pmu|charger|calibration/.test(label)) return "other";
   if (/cpu|efficiency core|performance core/.test(label)) return "cpu";
   if (/gpu|graphics/.test(label)) return "graphics";
   return "other";

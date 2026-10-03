@@ -92,6 +92,9 @@ test("temperature readings and unavailable external drives fit a phone", async (
     { id: "disk:external", label: "SOLIDIGM SSDPFKKW010X7", category: "storage", external: true, metric: { status: "unsupported" } },
     { id: "smc:Tp09", label: "Tp09", metric: { value: 59, status: "ok" } },
     { id: "smc:TCMz", label: "CPU die hotspot", category: "cpu", mappingReference: "M2", metric: { value: 58.4, status: "ok" } },
+    { id: "hid:CPU proximity", label: "CPU proximity", metric: { value: 97, status: "ok" } },
+    { id: "hid:Graphics VRM", label: "Graphics VRM", metric: { value: 98, status: "ok" } },
+    { id: "smc:TCHP", label: "CPU / charger proximity", category: "system", mappingReference: "M2", metric: { value: 96, status: "ok" } },
     { id: "smc:TVM0", label: "Memory rail voltage regulator", category: "vrm", mappingReference: "M2", metric: { value: 95, status: "ok" } },
     { id: "smc:TVm0", label: "Unified memory", category: "memory", mappingReference: "M2", metric: { value: 55, status: "ok" } },
     { id: "smc:Tp01", label: "CPU performance cores", category: "cpu", family: "performance", mappingReference: "M2", metric: { value: 56, status: "ok" } },
@@ -108,7 +111,7 @@ test("temperature readings and unavailable external drives fit a phone", async (
     await route.fulfill({ json: body });
   });
   await page.goto(base);
-  await expect(page.locator(".temperature-list li")).toHaveCount(9);
+  await expect(page.locator(".temperature-list li")).toHaveCount(12);
   await expect(page.locator(".temperature-list")).toContainText("58.3 °C");
   await expect(page.locator(".temperature-list")).toContainText("External drive");
   await expect(page.locator(".temperature-list")).toContainText("Temperature is not exposed");
@@ -116,6 +119,9 @@ test("temperature readings and unavailable external drives fit a phone", async (
   await expect(page.locator(".temperature-summary")).not.toContainText("59 °C");
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
   await expect(page.locator(".temperature-summary")).not.toContainText("95 °C");
+  await expect(page.locator(".temperature-summary")).not.toContainText("96 °C");
+  await expect(page.locator(".temperature-summary")).not.toContainText("97 °C");
+  await expect(page.locator(".temperature-summary")).not.toContainText("98 °C");
   await page.locator("header select").selectOption("zh-Hans");
   await expect(page.locator(".temperature-list")).toContainText("CPU 芯片热点");
   await expect(page.locator(".temperature-list")).toContainText("内存供电轨");
