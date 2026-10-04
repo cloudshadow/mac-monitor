@@ -199,94 +199,6 @@
         }
       }
     },
-    "lan": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Enable LAN"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "开启局域网"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "開啟區域網路"
-          }
-        }
-      }
-    },
-    "pair": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Create pairing code"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "生成配对码"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "產生配對碼"
-          }
-        }
-      }
-    },
-    "devices": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Devices"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "设备"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "裝置"
-          }
-        }
-      }
-    },
-    "revoke": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Revoke device"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "撤销设备"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "撤銷裝置"
-          }
-        }
-      }
-    },
     "start": {
       "localizations": {
         "en": {
@@ -512,19 +424,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Closing the window keeps monitoring active. Quit (⌘Q) stops monitoring for this session; the boot preference is preserved."
+            "value": "Closing the window keeps monitoring active. Quit (⌘Q) stops this session. The boot preference and current service are controlled independently."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "关闭窗口会继续后台监测；退出（⌘Q）会停止本次监测，保留开机启动设置。"
+            "value": "关闭窗口会继续监控；退出（⌘Q）会停止本次监控。开机启动和当前服务运行状态独立控制。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "關閉視窗會繼續背景監測；退出（⌘Q）會停止本次監測，保留開機啟動設定。"
+            "value": "關閉視窗會繼續監控；結束（⌘Q）會停止本次監控。開機啟動和目前服務執行狀態各自控制。"
           }
         }
       }
@@ -600,19 +512,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Boot preference %1$@ · system enabled %4$@ · loaded %2$@ · running %3$@"
+            "value": "Start at boot: %1$@ · Service running: %2$@"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "开机偏好 %1$@ · 系统启用 %4$@ · 已加载 %2$@ · 运行中 %3$@"
+            "value": "开机启动：%1$@ · 服务运行：%2$@"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "開機偏好 %1$@ · 系統啟用 %4$@ · 已載入 %2$@ · 執行中 %3$@"
+            "value": "開機啟動：%1$@ · 服務執行：%2$@"
           }
         }
       }
@@ -683,68 +595,24 @@
         }
       }
     },
-    "lanInterface": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Local network interface"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "局域网接口"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "區域網路介面"
-          }
-        }
-      }
-    },
     "lanHelp": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "For phones and other computers on the same network: choose an interface, enable LAN, then create a pairing code. Local monitoring works with LAN disabled."
+            "value": "LAN access is enabled automatically on en0. Sign in with the same account and password. Other devices must trust this Mac’s local CA certificate for HTTPS."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "供同一网络的手机或其他电脑访问：选择接口，开启局域网，再生成配对码。本机监测无需开启局域网。"
+            "value": "局域网默认在 en0 开启，使用相同账号密码登录。其他设备首次使用 HTTPS 时需信任这台 Mac 的本地 CA 证书。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "供同一網路的手機或其他電腦存取：選擇介面，開啟區域網路，再產生配對碼。本機監測無需開啟區域網路。"
-          }
-        }
-      }
-    },
-    "disableLAN": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Disable LAN"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "关闭局域网"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "關閉區域網路"
+            "value": "區域網路預設在 en0 開啟，使用相同帳號密碼登入。其他裝置首次使用 HTTPS 時需信任這台 Mac 的本機 CA 憑證。"
           }
         }
       }
@@ -798,19 +666,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The service is unavailable (%1$@). Click Start service; if disabled, enable it at boot first."
+            "value": "The monitoring service is unavailable (%1$@). Click Start service to resume."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "后台服务不可用（%1$@）。请点击“启动服务”；如果服务已禁用，请先启用开机启动。"
+            "value": "监控服务暂不可用（%1$@），请点击“启动服务”恢复。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "背景服務無法使用（%1$@）。請點選「啟動服務」；如果服務已停用，請先啟用開機啟動。"
+            "value": "監控服務暫時無法使用（%1$@），請點選「啟動服務」恢復。"
           }
         }
       }
@@ -855,6 +723,72 @@
           "stringUnit": {
             "state": "translated",
             "value": "無法開啟瀏覽器，請將監控地址複製到瀏覽器。"
+          }
+        }
+      }
+    },
+    "lanUnavailable": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LAN on en0 is unavailable (%1$@); local monitoring remains available."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "en0 局域网暂不可用（%1$@），本机监控仍可使用。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "en0 區域網路暫時無法使用（%1$@），本機監控仍可使用。"
+          }
+        }
+      }
+    },
+    "certificate": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HTTPS CA certificate: %1$@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HTTPS CA 证书：%1$@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HTTPS CA 憑證：%1$@"
+          }
+        }
+      }
+    },
+    "checking": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking status…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在检查状态…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在檢查狀態…"
           }
         }
       }

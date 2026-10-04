@@ -18,7 +18,6 @@ export const languages = [
       "errors": "/locales/en/errors.json",
       "history": "/locales/en/history.json",
       "native": "/locales/en/native.json",
-      "pairing": "/locales/en/pairing.json",
       "settings": "/locales/en/settings.json"
     }
   },
@@ -41,7 +40,6 @@ export const languages = [
       "errors": "/locales/zh-Hans/errors.json",
       "history": "/locales/zh-Hans/history.json",
       "native": "/locales/zh-Hans/native.json",
-      "pairing": "/locales/zh-Hans/pairing.json",
       "settings": "/locales/zh-Hans/settings.json"
     }
   },
@@ -64,7 +62,6 @@ export const languages = [
       "errors": "/locales/zh-Hant/errors.json",
       "history": "/locales/zh-Hant/history.json",
       "native": "/locales/zh-Hant/native.json",
-      "pairing": "/locales/zh-Hant/pairing.json",
       "settings": "/locales/zh-Hant/settings.json"
     }
   }

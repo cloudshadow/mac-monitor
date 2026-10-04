@@ -20,7 +20,7 @@ jobs:
       - run: npm --prefix web test
       - run: python3 scripts/installer-reinstall-test.py
       - run: python3 scripts/smoke.py
-      - run: bash scripts/package-app.sh 0.1.6
+      - run: bash scripts/package-app.sh 0.1.7
       - uses: actions/upload-artifact@v4
         with:
           name: development-app

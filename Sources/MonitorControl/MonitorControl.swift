@@ -1,4 +1,3 @@
-import CoreImage.CIFilterBuiltins
 import CoreServices
 import Darwin
 import MonitorCore
@@ -9,11 +8,12 @@ import SwiftUI
   static var current: ControlModel?
   @Published var status: JSONValue = .null
   @Published var serviceStatus: JSONValue = .null
+  @Published var serviceError = ""
+  private var inspectingService = false
+  private var serviceRevision = 0
+  private let serviceConfigurationPath: String?
   @Published var error = ""
   @Published var busy = false
-  @Published var pairingURL = ""
-  @Published var certificate = ""
-  @Published var devices: [JSONValue] = []
   @Published var update: AvailableUpdate?
   var reportShutdownFailure: (String) -> Void = { message in
     let alert = NSAlert()
@@ -24,6 +24,8 @@ import SwiftUI
   }
   private let socketPath: String, owner: uid_t
   init(socketPath testPath: String? = nil, ownerUid testOwner: uid_t? = nil) {
+    serviceConfigurationPath = testPath == nil && !CommandLine.arguments.contains("--data-root")
+      ? InstallationLayout.root + "/installation.json" : nil
     if let testPath, let testOwner {
       socketPath = testPath
       owner = testOwner
@@ -97,7 +99,44 @@ import SwiftUI
       }
     }
   }
-  func refresh() { send("status", then: { self.status = $0 }) }
+  var bootEnabled: Bool? {
+    guard let boot = serviceStatus["bootEnabled"].bool, let system = serviceStatus["systemEnabled"].bool else { return nil }
+    return boot && system
+  }
+  var running: Bool? { serviceStatus["running"].bool }
+  func toggleBoot() {
+    guard let bootEnabled else { return }
+    maintenance(bootEnabled ? "disable" : "enable")
+  }
+  func toggleService() {
+    guard let running else { return }
+    maintenance(running ? "stop" : "start")
+  }
+  func refreshServiceState() {
+    guard let path = serviceConfigurationPath, !inspectingService, !busy else { return }
+    inspectingService = true
+    let revision = serviceRevision
+    Task {
+      defer { inspectingService = false }
+      do {
+        let value = try await Task.detached {
+          let config = try JSONDecoder().decode(JSONValue.self, from: Data(contentsOf: URL(fileURLWithPath: path)))
+          return try ServiceState.inspect(config: config)
+        }.value
+        guard revision == serviceRevision else { return }
+        serviceStatus = value
+        serviceError = ""
+      } catch {
+        guard revision == serviceRevision else { return }
+        serviceStatus = .null
+        serviceError = NativeKeys.actionFailed(code: "unknownServiceState")
+      }
+    }
+  }
+  func refresh() {
+    refreshServiceState()
+    send("status", then: { self.status = $0 })
+  }
   func openMonitor() {
     // Re-read the address: it may be missing or stale after stopping/restarting.
     send("status", onFailure: { error in
@@ -116,12 +155,6 @@ import SwiftUI
   private static func code(_ error: any Error) -> String {
     (error as? APIError)?.code ?? "controlUnavailable"
   }
-  func pair() {
-    send("pair", then: {
-      self.pairingURL = $0["url"].string ?? ""
-      self.certificate = $0["caCertificate"].string ?? ""
-    })
-  }
   func checkUpdates() {
     guard !busy else { return }
     busy = true
@@ -135,6 +168,7 @@ import SwiftUI
       ["status", "enable", "start", "disable", "stop", "uninstall", "uninstallData"].contains(
         action), !busy
     else { return }
+    serviceRevision += 1
     let app = InstallationLayout.maintenance
     let script = "do shell script \"'\(app)' '\(action)' || true\" with administrator privileges"
     busy = true
@@ -150,16 +184,19 @@ import SwiftUI
         return try? JSONDecoder().decode(JSONValue.self, from: data)
       }.value
       if let value {
+        serviceError = ""
         if value["error"] != .null {
           serviceStatus = value["actual"]
           error = NativeKeys.actionFailed(code: value["error"]["code"].string ?? "maintenanceFailed")
         } else { serviceStatus = value }
       } else { error = NativeKeys.error() }
       busy = false
-      if value?["error"] == .null, ["start", "enable"].contains(action) {
+      if value?["error"] == .null, action == "start" {
         // launchctl returning successfully does not mean IPC is ready yet.
-        if await refreshAfterStart(), openWhenReady { openMonitor() }
-      } else if ["stop", "uninstall", "uninstallData"].contains(action) {
+        let ready = await refreshAfterStart()
+        refreshServiceState()
+        if ready, openWhenReady { openMonitor() }
+      } else if value?["error"] == .null, ["stop", "uninstall", "uninstallData"].contains(action) {
         status = .null
       }
     }
@@ -207,19 +244,14 @@ struct ControlView: View {
   @StateObject private var model = ControlModel()
   @AppStorage("language") private var language = "en"
   @State private var password = ""
-  @State private var interface = ""
   @State private var showClear = false
   @State private var showUninstall = false
   @State private var showRecovery = false
   @State private var deleteData = false
-  private func serviceFlag(_ key: String) -> String {
-    guard let value = model.serviceStatus[key].bool else { return "—" }
-    return value ? NativeKeys.yes() : NativeKeys.no()
-  }
   private var serviceSummary: String {
     NativeKeys.serviceState(
-      boot: serviceFlag("bootEnabled"), loaded: serviceFlag("loaded"),
-      running: serviceFlag("running"), system: serviceFlag("systemEnabled"))
+      boot: model.bootEnabled.map { $0 ? NativeKeys.yes() : NativeKeys.no() } ?? "—",
+      running: model.running.map { $0 ? NativeKeys.yes() : NativeKeys.no() } ?? "—")
   }
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
@@ -267,54 +299,26 @@ struct ControlView: View {
         Button(NativeKeys.clear(), role: .destructive) { showClear = true }
       }
       Divider()
-      HStack {
-        Picker(NativeKeys.lanInterface(), selection: $interface) {
-          Text("—").tag("")
-          ForEach(model.status["interfaces"].array, id: \.self) { value in
-            Text((value["name"].string ?? "") + " · " + (value["address"].string ?? "")).tag(
-              value["name"].string ?? "")
-          }
-        }
-        Button(NativeKeys.lan()) {
-          model.send("lan", arguments: ["enabled": .bool(true), "interface": .string(interface)])
-        }
-        Button(NativeKeys.disableLAN()) { model.send("lan", arguments: ["enabled": .bool(false)]) }
-        Button(NativeKeys.pair()) { model.pair() }
-      }
       Text(NativeKeys.lanHelp()).font(.caption).foregroundStyle(.secondary)
       if let address = model.status["lanAddress"].string, !address.isEmpty {
-        Text(address).font(.caption).textSelection(.enabled)
-      }
-      if !model.pairingURL.isEmpty {
-        HStack(alignment: .top) {
-          if let image = qr(model.pairingURL) {
-            Image(nsImage: image).interpolation(.none).resizable().frame(width: 140, height: 140)
-          }
-          VStack(alignment: .leading) {
-            Text(model.pairingURL).textSelection(.enabled).font(.caption)
-            Button("CA") {
-              NSWorkspace.shared.activateFileViewerSelecting([
-                URL(fileURLWithPath: model.certificate)
-              ])
-            }
-          }
+        Text(address).textSelection(.enabled)
+        if let certificate = model.status["caCertificate"].string {
+          Text(NativeKeys.certificate(path: certificate)).font(.caption).textSelection(.enabled)
         }
-      }
-      Button(NativeKeys.devices()) { model.send("devices", then: { model.devices = $0.array }) }
-      ForEach(model.devices, id: \.self) { value in
-        HStack {
-          Text(value["label"].string ?? "")
-          Spacer()
-          Button(NativeKeys.revoke()) { model.send("revokeDevice", arguments: ["id": value["id"]]) }
-        }
+      } else {
+        Text(NativeKeys.lanUnavailable(code: model.status["lanError"].string ?? "networkUnavailable"))
+          .font(.caption).foregroundStyle(.secondary)
       }
       Divider()
       HStack {
-        Button(NativeKeys.enable()) { model.maintenance("enable") }
-        Button(NativeKeys.start()) { model.maintenance("start") }
-        Button(NativeKeys.disable()) { model.maintenance("disable") }
-        Button(NativeKeys.stop()) { model.maintenance("stop") }
+        Button(model.bootEnabled.map { $0 ? NativeKeys.disable() : NativeKeys.enable() } ?? NativeKeys.checking()) {
+          model.toggleBoot()
+        }.disabled(model.bootEnabled == nil)
+        Button(model.running.map { $0 ? NativeKeys.stop() : NativeKeys.start() } ?? NativeKeys.checking()) {
+          model.toggleService()
+        }.disabled(model.running == nil)
       }
+      if !model.serviceError.isEmpty { Text(model.serviceError).font(.caption).foregroundStyle(.red) }
       if model.serviceStatus != .null {
         Text(serviceSummary).font(.caption)
       }
@@ -334,7 +338,13 @@ struct ControlView: View {
       if !model.error.isEmpty { Text(model.error).foregroundStyle(.red) }
       if model.busy { ProgressView() }
     }.padding(24).frame(width: 640).disabled(model.busy)
-      .onAppear { model.refresh() }
+      .task {
+        model.refresh()
+        while !Task.isCancelled {
+          do { try await Task.sleep(for: .seconds(5)) } catch { return }
+          model.refresh()
+        }
+      }
       .alert(NativeKeys.recover(), isPresented: $showRecovery) {
         Button(NativeKeys.recover(), role: .destructive) {
           model.send("recoverState", then: { result in
@@ -358,13 +368,5 @@ struct ControlView: View {
         }
         Button(NativeKeys.cancel(), role: .cancel) {}
       }
-  }
-  private func qr(_ value: String) -> NSImage? {
-    let filter = CIFilter.qrCodeGenerator()
-    filter.message = Data(value.utf8)
-    guard let output = filter.outputImage,
-      let image = CIContext().createCGImage(output, from: output.extent)
-    else { return nil }
-    return NSImage(cgImage: image, size: NSSize(width: 140, height: 140))
   }
 }

@@ -2,8 +2,15 @@ import Darwin
 import Foundation
 import MonitorCore
 
-public struct NetworkInterface: Sendable { public let name: String, address: String }
+public struct NetworkInterface: Sendable {
+  public let name: String, address: String
+  public init(name: String, address: String) { self.name = name; self.address = address }
+}
 public enum LanNetwork {
+  public static let defaultInterfaceName = "en0"
+  public static func defaultInterface(in interfaces: [NetworkInterface]) -> NetworkInterface? {
+    interfaces.first { $0.name == defaultInterfaceName }
+  }
   public static func interfaces() -> [NetworkInterface] {
     var pointer: UnsafeMutablePointer<ifaddrs>?
     guard getifaddrs(&pointer) == 0, let first = pointer else { return [] }

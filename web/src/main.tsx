@@ -12,14 +12,12 @@ import type { Language } from "./i18n/generated/registry";
 import { api, setCSRF, APIError } from "./store/api";
 import { startConnection, stopConnection, useMetrics } from "./store/metrics";
 import { Authentication } from "./pages/Authentication";
-import { Pairing } from "./pages/Pairing";
 import { Overview } from "./pages/Overview";
 import { Applications } from "./pages/Applications";
 import { History } from "./pages/History";
 import "./style.css";
 const fragment = new URLSearchParams(location.hash.slice(1)),
-  setupTicket = fragment.get("setup") ?? "",
-  pairTicket = fragment.get("pair") ?? "";
+  setupTicket = fragment.get("setup") ?? "";
 if (location.hash)
   history.replaceState(null, "", location.pathname + location.search);
 function App() {
@@ -46,7 +44,7 @@ function App() {
     }
   }
   useEffect(() => {
-    void selectLanguage(preferredLanguage(), ["auth", "pairing"])
+    void selectLanguage(preferredLanguage(), ["auth"])
       .then(() => setReady(true))
       .catch(() => setReady(true));
     void restore();
@@ -68,7 +66,7 @@ function App() {
         : page === "applications"
           ? "apps"
           : page;
-    void ensureNamespaces([ns, "auth", "pairing"]).catch(() =>
+    void ensureNamespaces([ns, "auth"]).catch(() =>
       setError("serviceUnavailable"),
     );
     if (page === "settings" && status === "authenticated")
@@ -178,12 +176,6 @@ function App() {
           <p>{t("common:loading")}</p>
         ) : status === "offline" ? (
           <button onClick={() => void restore()}>{t("common:retry")}</button>
-        ) : status === "pairingRequired" ||
-          (pairTicket && status !== "loginRequired") ? (
-          <Pairing
-            ticket={pairTicket}
-            onPaired={() => setStatus("loginRequired")}
-          />
         ) : (
           <Authentication
             status={status}

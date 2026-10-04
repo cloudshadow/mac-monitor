@@ -35,26 +35,10 @@ func protected(_ path: String) throws {
   return (task.terminationStatus, String(decoding: data, as: UTF8.self))
 }
 func disabled() throws -> Bool {
-  let output = try run(["print-disabled", "system"]).1
-  guard output.contains("disabled services = {") else { throw APIError(503, "unknownServiceState") }
-  for line in output.split(separator: "\n") {
-    let pair = line.components(separatedBy: "=>")
-    if pair.count == 2, pair[0].trimmingCharacters(in: .whitespaces) == "\"\(label)\"" {
-      let state = pair[1].trimmingCharacters(in: .whitespaces)
-      guard ["true", "false", "disabled", "enabled"].contains(state) else {
-        throw APIError(503, "unknownServiceState")
-      }
-      return state == "true" || state == "disabled"
-    }
-  }
-  return false
+  try ServiceState.isDisabled(run(["print-disabled", "system"]).1)
 }
 func observed(_ config: JSONValue) throws -> JSONValue {
-  let (code, output) = try run(["print", job], allowFailure: true)
-  return .object([
-    "bootEnabled": config["bootEnabled"], "systemEnabled": .bool(!(try disabled())),
-    "loaded": .bool(code == 0), "running": .bool(code == 0 && output.contains("state = running")),
-  ])
+  try ServiceState.inspect(config: config)
 }
 func save(_ value: JSONValue, _ filename: String) throws {
   try value.data().write(to: URL(fileURLWithPath: root + "/" + filename), options: .atomic)
@@ -97,6 +81,16 @@ do {
     }
     try save(config, "installation.json")
   }
+  func stopSession() throws {
+    try ServiceLifecycle.stop(job: job, loaded: actual["loaded"].bool == true, prepare: {
+      let ready = try? LocalControl.request(
+        path: root + "/data/run/control.sock", ownerUid: uid,
+        body: .object(["command": .string("prepareStop")]))
+      if ready?["ready"].bool != true {
+        FileHandle.standardError.write(Data("Agent flush was not confirmed; the last uncommitted window may be lost.\n".utf8))
+      }
+    }, run: { _ = try run($0) })
+  }
   switch action {
   case "installLink":
     var directory = stat()
@@ -105,47 +99,37 @@ do {
     else { throw APIError(503, "unsafeApplicationsDirectory") }
     try ApplicationLauncherLink.install(
       bundle: app, launcher: InstallationLayout.launcher, staging: root + "/.applications-link.new")
-  case "disable", "stop", "uninstall", "uninstallData":
+  case "disable":
     try run(["disable", job])
     guard try disabled() else { throw APIError(503, "disableFailed") }
     try bootChoice(false)
-    if action != "disable" {
-      if actual["loaded"].bool == true {
-        let ready = try? LocalControl.request(
-          path: root + "/data/run/control.sock", ownerUid: uid,
-          body: .object(["command": .string("prepareStop")]))
-        if ready?["ready"].bool != true {
-          FileHandle.standardError.write(
-            Data("Agent flush was not confirmed; the last uncommitted window may be lost.\n".utf8))
-        }
-        try run(["bootout", job])
-      }
-      if action == "uninstall" || action == "uninstallData" {
-        try protected(plist)
-        try FileManager.default.removeItem(atPath: plist)
-        try ApplicationLauncherLink.remove(bundle: app, launcher: InstallationLayout.launcher)
-        try FileManager.default.removeItem(atPath: app)
-      }
-    }
-  case "enable", "start":
+  case "stop":
+    try stopSession()
+  case "uninstall", "uninstallData":
+    try run(["disable", job])
+    guard try disabled() else { throw APIError(503, "disableFailed") }
+    try bootChoice(false)
+    try stopSession()
     try protected(plist)
-    if action == "start", try (config["bootEnabled"].bool != true || disabled()) {
-      throw APIError(409, "serviceDisabled")
-    }
-    if action == "enable" {
-      let circuit = root + "/data/startup-attempts.json"
-      var info = stat()
-      if lstat(circuit, &info) == 0 {
-        guard info.st_mode & S_IFMT == S_IFREG, info.st_uid == uid, info.st_nlink == 1 else {
-          throw APIError(503, "unsafeDataPath")
-        }
-        unlink(circuit)
+    try FileManager.default.removeItem(atPath: plist)
+    try ApplicationLauncherLink.remove(bundle: app, launcher: InstallationLayout.launcher)
+    try FileManager.default.removeItem(atPath: app)
+  case "enable":
+    try protected(plist)
+    try run(["enable", job])
+    try bootChoice(true)
+  case "start":
+    try protected(plist)
+    let circuit = root + "/data/startup-attempts.json"
+    var info = stat()
+    if lstat(circuit, &info) == 0 {
+      guard info.st_mode & S_IFMT == S_IFREG, info.st_uid == uid, info.st_nlink == 1 else {
+        throw APIError(503, "unsafeDataPath")
       }
-      try run(["enable", job])
-      try bootChoice(true)
+      guard unlink(circuit) == 0 else { throw APIError(503, "startupCircuitResetFailed") }
     }
-    if actual["loaded"].bool != true { try run(["bootstrap", "system", plist]) }
-    if actual["running"].bool != true { try run(["kickstart", job]) }
+    try ServiceLifecycle.start(job: job, plist: plist, loaded: actual["loaded"].bool == true,
+      disabled: try disabled(), run: { _ = try run($0) })
   default: break
   }
   actual = try observed(config)

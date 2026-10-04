@@ -7,7 +7,7 @@ project = pathlib.Path(__file__).resolve().parent.parent
 source = (project / 'scripts/install.sh').read_text()
 block = source[source.index('restart=false; enabled=true; legacy=false'):source.index("printf '{\"ownerName\"")]
 
-def check(name, app_state, loaded=False, unsafe_data=False, expected_failure=False):
+def check(name, app_state, loaded=False, unsafe_data=False, expected_failure=False, boot_enabled=True):
     with tempfile.TemporaryDirectory(prefix='cmm-reinstall.', dir='/private/tmp') as folder:
         root = pathlib.Path(folder); app = root / 'App.app'; data = root / 'data'
         data.mkdir(mode=0o700); sentinel = data / 'history.sqlite'; sentinel.write_bytes(b'preserve-history')
@@ -20,7 +20,7 @@ def check(name, app_state, loaded=False, unsafe_data=False, expected_failure=Fal
             helper.write_text('''#!/bin/bash
 if [[ "$1" == status ]]; then echo '{"bootEnabled":true,"systemEnabled":true,"running":true}'; fi
 if [[ "$1" == stop ]]; then echo stopped > "${fixture_root}/stopped"; fi
-'''); helper.chmod(0o755)
+'''.replace('\"bootEnabled\":true,\"systemEnabled\":true', '\"bootEnabled\":'+str(boot_enabled).lower()+',\"systemEnabled\":'+str(boot_enabled).lower())); helper.chmod(0o755)
         elif app_state == 'partial': app.mkdir()
         elif app_state == 'symlink': app.symlink_to(root / 'missing')
         values = {'root': str(root), 'fixture_root': str(root), 'app': str(app), 'public_app': str(root / 'Public.app'), 'root_stage': str(stage), 'job': 'system/org.cloudmacmonitor.agent', 'plist': str(root / 'agent.plist'), 'owner_uid': str(os.getuid()), 'owner_name': pwd.getpwuid(os.getuid()).pw_name, 'owner_guid': 'fixture-guid'}
@@ -34,7 +34,7 @@ launchctl() { echo "$*" >> "$root/launchctl-calls"; if [[ "$1" == print ]]; then
         assert sentinel.read_bytes() == b'preserve-history'
         if unsafe_data: assert not (root / 'launchctl-calls').exists()
         if not expected_failure:
-            assert result.stdout.endswith('true true'), (name, result.stdout)
+            assert result.stdout.endswith(('true' if app_state != 'healthy' or boot_enabled else 'false')+' true'), (name, result.stdout)
             if app_state == 'healthy': assert (root / 'stopped').exists()
             else:
                 calls = (root / 'launchctl-calls').read_text()
@@ -48,3 +48,5 @@ check('healthy upgrade keeps existing path', 'healthy')
 check('partial app remains refused', 'partial', expected_failure=True)
 check('dangling app link remains refused', 'symlink', expected_failure=True)
 check('unsafe data remains refused', 'missing', unsafe_data=True, expected_failure=True)
+
+check('running upgrade preserves disabled boot preference', 'healthy', boot_enabled=False)

@@ -12,7 +12,8 @@ public final class AgentRuntime: @unchecked Sendable {
   private let lockFd: Int32, root: String, webRootForLAN: String
   private let requestExit: @Sendable () -> Void
   private let stopping = Locked(false)
-  private let lan = Locked((address: "", interface: ""))
+  private let lan = Locked((address: "", error: "starting"))
+  public static let lanInterface = LanNetwork.defaultInterfaceName
   private var lanServer: MonitorHTTPServer?
   private var powerWatcher: SystemPowerWatcher?
   private var powerObservers: [NSObjectProtocol] = []
@@ -117,9 +118,7 @@ public final class AgentRuntime: @unchecked Sendable {
     }
     networkTimer = timer
     timer.resume()
-    if (try? state.setting("lanEnabled")) == "true" {
-      try? awaitlessEnableLAN(interface: (try? state.setting("lanInterface")) ?? "")
-    }
+    lifecycleQueue.async { [weak self] in self?.reconcileLAN() }
   }
   public func command(_ request: JSONValue) async throws -> JSONValue {
     switch request["command"].string {
@@ -129,6 +128,9 @@ public final class AgentRuntime: @unchecked Sendable {
         "recoveryRequired": .bool(state.recoveryRequired), "history": history.status(),
         "readyToStop": .bool(stopping.withLock { $0 }),
         "lanAddress": .string(lan.withLock { $0.address }),
+        "lanInterface": .string(Self.lanInterface),
+        "lanError": .string(lan.withLock { $0.error }),
+        "caCertificate": .string(root + "/secrets/ca.pem"),
         "interfaces": .array(
           LanNetwork.interfaces().map {
             .object(["name": .string($0.name), "address": .string($0.address)])
@@ -146,34 +148,6 @@ public final class AgentRuntime: @unchecked Sendable {
         old: request["oldPassword"].string ?? "", new: request["password"].string ?? "")
       return .object(["status": .string("ok")])
     case "history": return try await history.control(request["action"].string ?? "")
-    case "lan":
-      return try await withCheckedThrowingContinuation { continuation in
-        lifecycleQueue.async { [self] in
-          do {
-            if request["enabled"].bool == true {
-              try awaitlessEnableLAN(interface: request["interface"].string ?? "")
-            } else {
-              try state.set("lanEnabled", "false")
-              lanServer?.shutdown()
-              lanServer = nil
-              lan.withLock { $0 = ("", "") }
-            }
-            continuation.resume(
-              returning: .object(["address": .string(lan.withLock { $0.address })]))
-          } catch { continuation.resume(throwing: error) }
-        }
-      }
-    case "pair":
-      let address = lan.withLock { $0.address }
-      guard !address.isEmpty else { throw APIError(409, "lanDisabled") }
-      return .object([
-        "url": .string(address + "/#pair=" + (try auth.issuePairingTicket())),
-        "caCertificate": .string(root + "/secrets/ca.pem"),
-      ])
-    case "devices": return try state.devices()
-    case "revokeDevice":
-      try auth.revokeDevice(request["id"].string ?? "")
-      return .object(["status": .string("ok")])
     case "shutdown":
       // Owner-only IPC: allow the acknowledgement to leave before closing the control socket.
       stopping.withLock { $0 = true }
@@ -198,27 +172,31 @@ public final class AgentRuntime: @unchecked Sendable {
         thermal: ProcessInfo.processInfo.thermalState.rawValue))
   }
   private func reconcileLAN() {
-    guard !stopping.withLock({ $0 }), (try? state.setting("lanEnabled")) == "true" else { return }
-    let interface = (try? state.setting("lanInterface")) ?? ""
-    guard let selected = LanNetwork.interfaces().first(where: { $0.name == interface }) else {
+    guard !stopping.withLock({ $0 }) else { return }
+    let interface = Self.lanInterface
+    guard let selected = LanNetwork.defaultInterface(in: LanNetwork.interfaces()) else {
+      lanServer?.shutdown()
+      lanServer = nil
+      lan.withLock { $0 = ("", "networkUnavailable") }
+      return
+    }
+    let sameAddress = lan.withLock { $0.address.hasPrefix("https://" + selected.address + ":") }
+    if !sameAddress {
       lanServer?.shutdown()
       lanServer = nil
       lan.withLock { $0.address = "" }
-      return
     }
-    if !lan.withLock({ $0.address.contains("https://" + selected.address + ":") })
+    if !sameAddress
       || Date().timeIntervalSince(certificateCheckAt) >= 86400
     {
-      try? awaitlessEnableLAN(interface: interface)
+      do { try awaitlessEnableLAN(interface: interface) } catch {
+        lan.withLock { $0.error = (error as? APIError)?.code ?? "tlsUnavailable" }
+      }
     }
   }
   private func awaitlessEnableLAN(interface: String) throws {
-    guard try state.account() != nil else { throw APIError(409, "setupRequired") }
     let choices = LanNetwork.interfaces()
-    guard
-      let chosen = choices.first(where: { $0.name == interface })
-        ?? (interface.isEmpty ? choices.first : nil)
-    else { throw APIError(503, "networkUnavailable") }
+    guard let chosen = LanNetwork.defaultInterface(in: choices) else { throw APIError(503, "networkUnavailable") }
     let identity = try TLSIdentity(directory: root + "/secrets", address: chosen.address)
     let listener = MonitorHTTPServer(
       auth: auth, metrics: metrics, history: history, webRoot: webRootForLAN,
@@ -237,15 +215,8 @@ public final class AgentRuntime: @unchecked Sendable {
       throw error
     }
     certificateCheckAt = Date()
-    do {
-      try state.set("lanInterface", chosen.name)
-      try state.set("lanEnabled", "true")
-    } catch {
-      listener.shutdown()
-      throw error
-    }
     lanServer = listener
-    lan.withLock { $0 = ("https://\(chosen.address):\(port)", chosen.name) }
+    lan.withLock { $0 = ("https://\(chosen.address):\(port)", "") }
   }
   public func shutdown() async {
     stopping.withLock { $0 = true }

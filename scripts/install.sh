@@ -108,7 +108,7 @@ if [[ -e "$root/installation.json" ]]; then
     "$installed_app/Contents/MacOS/MonitorMaintenance" status > "$root_stage/before.json"
     enabled="$(plutil -extract bootEnabled raw -o - "$root_stage/before.json")"
     if [[ "$(plutil -extract systemEnabled raw -o - "$root_stage/before.json")" != true ]]; then enabled=false; fi
-    if [[ "$enabled" == true && "$(plutil -extract running raw -o - "$root_stage/before.json")" == true ]]; then restart=true; fi
+    if [[ "$(plutil -extract running raw -o - "$root_stage/before.json")" == true ]]; then restart=true; fi
     "$installed_app/Contents/MacOS/MonitorMaintenance" stop
   fi
 else
@@ -128,11 +128,14 @@ plutil -lint "$root_stage/agent.plist"
 install -m 644 -o root -g wheel "$root_stage/agent.plist" "$plist"
 if [[ "$enabled" == true ]]; then launchctl enable "$job"; else launchctl disable "$job"; fi
 if [[ "$restart" == true ]]; then
+  # A running session may have boot startup disabled. Restore that choice after starting.
+  launchctl enable "$job"
   if ! launchctl bootstrap system "$plist"; then
     launchctl disable "$job"
     echo 'Start failed. Service remains disabled. Previous app preserved for reviewed recovery.' >&2
     exit 1
   fi
+  if [[ "$enabled" != true ]]; then launchctl disable "$job"; fi
 fi
 rm -rf "$old"
 echo 'Installed. Open /Applications/Cloud Mac Monitor.app; approve Gatekeeper when prompted.'

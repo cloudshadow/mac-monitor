@@ -28,20 +28,19 @@ struct AuthTests {
     let ticket = try auth.issueSetupTicket()
     let result = try await auth.setup(
       ticket: ticket, username: "Owner", password: "a valid password 123", ip: "local")
-    #expect(try auth.session(token: result.token, deviceToken: nil, lan: false).epoch == 1)
+    #expect(try auth.session(token: result.token, lan: false).epoch == 1)
     #expect(throws: APIError.self) { try store.create(username: "second", hash: "fixture") }
     try await auth.resetPassword("a changed password 456")
     #expect(throws: APIError.self) {
-      try auth.session(token: result.token, deviceToken: nil, lan: false)
+      try auth.session(token: result.token, lan: false)
     }
     let login = try await auth.login(
-      username: "OWNER", password: "a changed password 456", ip: "local", deviceToken: nil,
-      lan: false)
-    let csrf1 = try auth.csrf(for: auth.session(token: login.token, deviceToken: nil, lan: false))
+      username: "OWNER", password: "a changed password 456", ip: "local", lan: false)
+    let csrf1 = try auth.csrf(for: auth.session(token: login.token, lan: false))
     #expect(csrf1 == login.csrf)
     auth.logout(token: login.token)
     #expect(throws: APIError.self) {
-      try auth.session(token: login.token, deviceToken: nil, lan: false)
+      try auth.session(token: login.token, lan: false)
     }
     #expect(try StateStore(path: store.path).account()?.epoch == 2)
   }
@@ -117,8 +116,25 @@ struct AuthTests {
   defer { try? FileManager.default.removeItem(at: root) }
   let auth = try AuthService(store: StateStore(path: root.appendingPathComponent("state.sqlite").path))
   let result = try await auth.setup(ticket: "", username: "owner", password: "first-run-password-123", ip: "local", localFirstRun: true)
-  #expect(try auth.session(token: result.token, deviceToken: nil, lan: false).epoch == 1)
+  #expect(try auth.session(token: result.token, lan: false).epoch == 1)
   await #expect(throws: APIError.self) {
     try await auth.setup(ticket: "", username: "other", password: "other-password-12345", ip: "local", localFirstRun: true)
   }
+}
+
+@Test func lanPasswordLoginNeedsNoPairingAndSessionsRemainIsolated() async throws {
+  let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+  try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+  defer { try? FileManager.default.removeItem(at: root) }
+  let auth = try AuthService(store: StateStore(path: root.appendingPathComponent("state.sqlite").path))
+  let local = try await auth.setup(ticket: "", username: "owner", password: "first-run-password-123", ip: "local", localFirstRun: true)
+  #expect(throws: APIError.self) { try auth.session(token: local.token, lan: true) }
+  let lan = try await auth.login(username: "owner", password: "first-run-password-123", ip: "lan", lan: true)
+  #expect(try auth.session(token: lan.token, lan: true).lan)
+  #expect(throws: APIError.self) { try auth.session(token: lan.token, lan: false) }
+  await #expect(throws: APIError.self) {
+    try await auth.login(username: "owner", password: "wrong-password", ip: "bad-lan", lan: true)
+  }
+  try await auth.resetPassword("a-new-password-12345")
+  #expect(throws: APIError.self) { try auth.session(token: lan.token, lan: true) }
 }

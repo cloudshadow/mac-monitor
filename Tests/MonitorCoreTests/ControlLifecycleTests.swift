@@ -69,4 +69,16 @@ import Testing
     #expect(allowed)
     #expect(model.error.isEmpty)
   }
+  @Test func mergedControlsUseIndependentStatesAndWaitForObservation() throws {
+    let (root, path) = try fixture()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let model = ControlModel(socketPath: path, ownerUid: getuid())
+    #expect(model.bootEnabled == nil && model.running == nil)
+    model.toggleBoot(); model.toggleService()
+    #expect(!model.busy)
+    model.serviceStatus = .object(["bootEnabled": .bool(false), "systemEnabled": .bool(false), "running": .bool(true)])
+    #expect(model.bootEnabled == false && model.running == true)
+    model.serviceStatus = .object(["bootEnabled": .bool(true), "systemEnabled": .bool(false), "running": .bool(false)])
+    #expect(model.bootEnabled == false && model.running == false)
+  }
 }

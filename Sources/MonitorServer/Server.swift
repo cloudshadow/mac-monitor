@@ -151,7 +151,7 @@ public final class MonitorHTTPServer: @unchecked Sendable {
   public func session(_ r: WebRequest, lan: Bool) throws -> AccountSession {
     try auth.session(
       token: r.cookies[lan ? "cmm_lan_session" : "cmm_session"],
-      deviceToken: r.cookies["cmm_device"], lan: lan)
+      lan: lan)
   }
   public func route(_ r: WebRequest, policy: OriginPolicy) async throws -> WebResponse {
     let publicRoute =
@@ -183,10 +183,6 @@ public final class MonitorHTTPServer: @unchecked Sendable {
           status = lan ? "returnToMac" : "setupRequired"
         } else if (try? session(r, lan: lan)) != nil {
           status = "authenticated"
-        } else if lan
-          && (try? auth.store.validDevice(hash: Crypto.hash(r.cookies["cmm_device"] ?? ""))) == nil
-        {
-          status = "pairingRequired"
         } else {
           status = "loginRequired"
         }
@@ -209,17 +205,10 @@ public final class MonitorHTTPServer: @unchecked Sendable {
       case "/api/v1/auth/login":
         let result = try await auth.login(
           username: r.body["username"].string ?? "", password: r.body["password"].string ?? "",
-          ip: r.ip, deviceToken: r.cookies["cmm_device"], lan: lan)
+          ip: r.ip, lan: lan)
         return try .json(
           .object(["csrfToken": .string(result.csrf), "expiresAt": .date(result.expiresAt)]),
           headers: [cookie(cookieName, result.token, 43200)])
-      case "/api/v1/pairing/exchange":
-        guard lan else { throw APIError(403, "tlsRequired") }
-        let token = try auth.pair(
-          ticket: r.body["ticket"].string ?? "", label: r.body["deviceLabel"].string ?? "")
-        return try .json(
-          .object(["status": .string("loginRequired")]),
-          headers: [cookie("cmm_device", token, 30 * 86400)])
       default: break
       }
     }

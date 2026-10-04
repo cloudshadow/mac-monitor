@@ -10,10 +10,6 @@ enum NativeKeys {
     static func pause() -> String { NativeLocalization.text("pause", parameters: [:]) }
     static func resume() -> String { NativeLocalization.text("resume", parameters: [:]) }
     static func clear() -> String { NativeLocalization.text("clear", parameters: [:]) }
-    static func lan() -> String { NativeLocalization.text("lan", parameters: [:]) }
-    static func pair() -> String { NativeLocalization.text("pair", parameters: [:]) }
-    static func devices() -> String { NativeLocalization.text("devices", parameters: [:]) }
-    static func revoke() -> String { NativeLocalization.text("revoke", parameters: [:]) }
     static func start() -> String { NativeLocalization.text("start", parameters: [:]) }
     static func stop() -> String { NativeLocalization.text("stop", parameters: [:]) }
     static func enable() -> String { NativeLocalization.text("enable", parameters: [:]) }
@@ -28,16 +24,17 @@ enum NativeKeys {
     static func cancel() -> String { NativeLocalization.text("cancel", parameters: [:]) }
     static func recover() -> String { NativeLocalization.text("recover", parameters: [:]) }
     static func deleteData() -> String { NativeLocalization.text("deleteData", parameters: [:]) }
-    static func serviceState(boot: String, loaded: String, running: String, system: String) -> String { NativeLocalization.text("serviceState", parameters: ["boot": boot, "loaded": loaded, "running": running, "system": system]) }
+    static func serviceState(boot: String, running: String) -> String { NativeLocalization.text("serviceState", parameters: ["boot": boot, "running": running]) }
     static func yes() -> String { NativeLocalization.text("yes", parameters: [:]) }
     static func no() -> String { NativeLocalization.text("no", parameters: [:]) }
     static func refreshHelp() -> String { NativeLocalization.text("refreshHelp", parameters: [:]) }
-    static func lanInterface() -> String { NativeLocalization.text("lanInterface", parameters: [:]) }
     static func lanHelp() -> String { NativeLocalization.text("lanHelp", parameters: [:]) }
-    static func disableLAN() -> String { NativeLocalization.text("disableLAN", parameters: [:]) }
     static func quitFailed(code: String) -> String { NativeLocalization.text("quitFailed", parameters: ["code": code]) }
     static func version(build: String, version: String) -> String { NativeLocalization.text("version", parameters: ["build": build, "version": version]) }
     static func serviceUnavailable(code: String) -> String { NativeLocalization.text("serviceUnavailable", parameters: ["code": code]) }
     static func actionFailed(code: String) -> String { NativeLocalization.text("actionFailed", parameters: ["code": code]) }
     static func browserFailed() -> String { NativeLocalization.text("browserFailed", parameters: [:]) }
+    static func lanUnavailable(code: String) -> String { NativeLocalization.text("lanUnavailable", parameters: ["code": code]) }
+    static func certificate(path: String) -> String { NativeLocalization.text("certificate", parameters: ["path": path]) }
+    static func checking() -> String { NativeLocalization.text("checking", parameters: [:]) }
 }

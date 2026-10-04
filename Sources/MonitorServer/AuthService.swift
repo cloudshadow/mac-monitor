@@ -28,14 +28,14 @@ public enum Crypto {
 }
 
 public struct AccountSession: Sendable {
-  public let hash: String, epoch: Int64, deviceId: String?, expiresAt: Date
+  public let hash: String, epoch: Int64, lan: Bool, expiresAt: Date
 }
 public struct AuthResult: Sendable {
   public let token: String, csrf: String, expiresAt: Date
 }
 private struct AuthMemory {
   var sessions: [String: AccountSession] = [:]
-  var setup: [String: Date] = [:], pairing: [String: Date] = [:]
+  var setup: [String: Date] = [:]
   var attempts: [String: [Date]] = [:], global: [Date] = []
   var kdfPending = 0
 }
@@ -128,9 +128,9 @@ public final class AuthService: @unchecked Sendable {
     }
     let hash = try await kdf { try Self.passwordHash(password) }
     try store.create(username: user, hash: hash)
-    return try createSession(deviceId: nil)
+    return try createSession(lan: false)
   }
-  public func login(username: String, password: String, ip: String, deviceToken: String?, lan: Bool)
+  public func login(username: String, password: String, ip: String, lan: Bool)
     async throws -> AuthResult
   {
     try limit(ip)
@@ -138,7 +138,6 @@ public final class AuthService: @unchecked Sendable {
     guard username.count <= 64, password.count <= 128, password.utf8.count <= 512 else {
       throw APIError(401, "invalidCredentials")
     }
-    let device = try device(lan: lan, token: deviceToken)
     guard let account = try store.account() else { throw APIError(401, "invalidCredentials") }
     let matches = try await kdf {
       let bytes = Array(password.utf8) + [0]
@@ -153,9 +152,9 @@ public final class AuthService: @unchecked Sendable {
         .lowercased() == account.username
     else { throw APIError(401, "invalidCredentials") }
     guard try store.account()?.epoch == account.epoch else { throw APIError(401, "loginRequired") }
-    return try createSession(deviceId: device, expectedEpoch: account.epoch)
+    return try createSession(lan: lan, expectedEpoch: account.epoch)
   }
-  private func createSession(deviceId: String?, expectedEpoch: Int64? = nil) throws -> AuthResult {
+  private func createSession(lan: Bool, expectedEpoch: Int64? = nil) throws -> AuthResult {
     guard let account = try store.account() else { throw APIError(401, "loginRequired") }
     guard expectedEpoch == nil || expectedEpoch == account.epoch else {
       throw APIError(401, "loginRequired")
@@ -164,7 +163,7 @@ public final class AuthService: @unchecked Sendable {
     let hash = Crypto.hash(token)
     let expiry = Date().addingTimeInterval(43_200)
     let session = AccountSession(
-      hash: hash, epoch: account.epoch, deviceId: deviceId, expiresAt: expiry)
+      hash: hash, epoch: account.epoch, lan: lan, expiresAt: expiry)
     try state.withLock { s in
       s.sessions = s.sessions.filter { $0.value.expiresAt > Date() }
       guard s.sessions.count < 128 else { throw APIError(429, "sessionLimit") }
@@ -172,17 +171,9 @@ public final class AuthService: @unchecked Sendable {
     }
     return AuthResult(token: token, csrf: try csrf(for: session), expiresAt: expiry)
   }
-  private func device(lan: Bool, token: String?) throws -> String? {
-    if !lan { return nil }
-    guard let token, let id = try store.validDevice(hash: Crypto.hash(token)) else {
-      throw APIError(403, "pairingRequired")
-    }
-    return id
-  }
-  public func session(token: String?, deviceToken: String?, lan: Bool) throws -> AccountSession {
-    let deviceId = try device(lan: lan, token: deviceToken)
+  public func session(token: String?, lan: Bool) throws -> AccountSession {
     guard let token, let session = state.withLock({ $0.sessions[Crypto.hash(token)] }),
-      session.expiresAt > Date(), session.deviceId == deviceId,
+      session.expiresAt > Date(), session.lan == lan,
       session.epoch == (try store.account()?.epoch)
     else { throw APIError(401, "loginRequired") }
     return session
@@ -232,38 +223,13 @@ public final class AuthService: @unchecked Sendable {
     guard valid else { throw APIError(401, "invalidCredentials") }
     try await resetPassword(new)
   }
-  public func issuePairingTicket() throws -> String {
-    guard try store.account() != nil else { throw APIError(409, "setupRequired") }
-    let token = Crypto.random(16)
-    state.withLock { $0.pairing = [Crypto.hash(token): Date().addingTimeInterval(300)] }
-    return token
-  }
-  public func pair(ticket: String, label: String) throws -> String {
-    guard (1...64).contains(label.count) else { throw APIError(400, "invalidParameter") }
-    try state.withLock { s in
-      guard let expiry = s.pairing.removeValue(forKey: Crypto.hash(ticket)), expiry > Date() else {
-        throw APIError(403, "pairingTicketInvalid")
-      }
-    }
-    let token = Crypto.random()
-    try store.addDevice(
-      id: UUID().uuidString, label: label, hash: Crypto.hash(token),
-      expires: Date().addingTimeInterval(30 * 86_400))
-    return token
-  }
   public func recoverState() throws -> String {
     try store.recover()
     state.withLock {
       $0.sessions.removeAll()
       $0.setup.removeAll()
-      $0.pairing.removeAll()
     }
     onRevocation?()
     return try issueSetupTicket()
-  }
-  public func revokeDevice(_ id: String) throws {
-    try store.revoke(id: id)
-    state.withLock { $0.sessions = $0.sessions.filter { $0.value.deviceId != id } }
-    onRevocation?()
   }
 }

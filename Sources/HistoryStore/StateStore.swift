@@ -120,46 +120,4 @@ public final class StateStore: @unchecked Sendable {
         [.string(key), .string(value)])
     }
   }
-  public func addDevice(id: String, label: String, hash: String, expires: Date) throws {
-    try access { db in
-      try db.run(
-        "DELETE FROM device WHERE revoked_at IS NOT NULL OR expires_at<=?",
-        [.number(Date().timeIntervalSince1970)])
-      guard
-        try db.rows(
-          "SELECT id FROM device WHERE revoked_at IS NULL AND expires_at>?",
-          [.number(Date().timeIntervalSince1970)], limit: 129
-        ).count < 128
-      else { throw APIError(429, "deviceLimit") }
-      try db.run(
-        "INSERT INTO device VALUES(?,?,?,?,?,NULL)",
-        [
-          .string(id), .string(label), .string(hash), .number(Date().timeIntervalSince1970),
-          .number(expires.timeIntervalSince1970),
-        ])
-    }
-  }
-  public func validDevice(hash: String) throws -> String? {
-    try access {
-      try $0.rows(
-        "SELECT id FROM device WHERE token_hash=? AND revoked_at IS NULL AND expires_at>?",
-        [.string(hash), .number(Date().timeIntervalSince1970)]
-      ).first?["id"]?.string
-    }
-  }
-  public func devices() throws -> JSONValue {
-    try access {
-      .array(
-        try $0.rows(
-          "SELECT id,label,created_at,expires_at,revoked_at FROM device ORDER BY created_at DESC LIMIT 128"
-        ).map(JSONValue.object))
-    }
-  }
-  public func revoke(id: String) throws {
-    try access {
-      try $0.run(
-        "UPDATE device SET revoked_at=? WHERE id=?",
-        [.number(Date().timeIntervalSince1970), .string(id)])
-    }
-  }
 }

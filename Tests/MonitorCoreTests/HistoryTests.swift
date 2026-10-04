@@ -68,9 +68,9 @@ import Testing
   }
   @Test func viewersAreBoundAndLimited() throws {
     let a = AccountSession(
-      hash: "a", epoch: 1, deviceId: nil, expiresAt: Date().addingTimeInterval(100))
+      hash: "a", epoch: 1, lan: false, expiresAt: Date().addingTimeInterval(100))
     let b = AccountSession(
-      hash: "b", epoch: 1, deviceId: nil, expiresAt: Date().addingTimeInterval(100))
+      hash: "b", epoch: 1, lan: false, expiresAt: Date().addingTimeInterval(100))
     let service = ViewerService()
     let ids = try (0..<6).map { _ in
       try service.create(session: a, channels: ["system"])["viewerId"].string!

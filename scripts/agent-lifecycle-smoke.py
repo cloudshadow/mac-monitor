@@ -63,6 +63,25 @@ with tempfile.TemporaryDirectory(prefix='cmm-lifecycle.', dir='/private/tmp') as
         control('shutdown'); wait(lambda: pid() is None)
         time.sleep(3); assert pid() is None
         assert 'shutdown deadline reached' not in (pathlib.Path(root) / 'stderr.log').read_text(), 'Shutdown did not flush within deadline'
-        print(json.dumps({'agentLifecycle': 'passed', 'scope': 'temporary user-domain fixture', 'checks': ['owner shutdown exits actual PID', 'successful stop does not respawn', 'explicit restart works', 'SIGTERM stops without respawn', 'SIGKILL respawns under KeepAlive', 'restarted Agent can stop normally']}))
+        # A disabled boot override does not stop an already running session.
+        subprocess.run(['/bin/launchctl', 'bootout', job], check=True, capture_output=True)
+        subprocess.run(['/bin/launchctl', 'enable', job], check=True, capture_output=True)
+        subprocess.run(['/bin/launchctl', 'bootstrap', domain, str(path)], check=True, capture_output=True)
+        wait(ready); running = pid(); assert running
+        subprocess.run(['/bin/launchctl', 'disable', job], check=True, capture_output=True)
+        time.sleep(1); assert pid() == running; assert ready()
+        control('prepareStop')
+        subprocess.run(['/bin/launchctl', 'bootout', job], check=True, capture_output=True)
+        wait(lambda: pid() is None)
+        overrides = subprocess.run(['/bin/launchctl', 'print-disabled', domain], text=True, capture_output=True, check=True).stdout
+        assert any(label in line and ('disabled' in line or 'true' in line) for line in overrides.splitlines())
+        # Temporary enable for Start followed by disable keeps the session alive.
+        subprocess.run(['/bin/launchctl', 'enable', job], check=True, capture_output=True)
+        subprocess.run(['/bin/launchctl', 'bootstrap', domain, str(path)], check=True, capture_output=True)
+        subprocess.run(['/bin/launchctl', 'kickstart', job], check=True, capture_output=True)
+        subprocess.run(['/bin/launchctl', 'disable', job], check=True, capture_output=True)
+        wait(ready); assert pid(); control('shutdown'); wait(lambda: pid() is None)
+        print(json.dumps({'agentLifecycle': 'passed', 'scope': 'temporary user-domain fixture', 'checks': ['owner shutdown exits actual PID', 'successful stop does not respawn', 'explicit restart works', 'SIGTERM stops without respawn', 'SIGKILL respawns under KeepAlive', 'restarted Agent can stop normally', 'boot disable leaves running session alive', 'session stop preserves disabled override', 'temporary enable-start-disable runs with boot disabled']}))
     finally:
         subprocess.run(['/bin/launchctl', 'bootout', job], capture_output=True)
+        subprocess.run(['/bin/launchctl', 'enable', job], capture_output=True)

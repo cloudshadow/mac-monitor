@@ -1,25 +1,25 @@
 # Cloud Mac Monitor
 
-A native monitoring service and static React web interface for macOS 14+, implemented from the [feature specification](specs/001-hardware-monitor/spec.md). It includes account authentication, CPU/memory/disk/network monitoring, application rankings, persistent history, LAN access with TLS pairing, and local service management. The installed app does not require Node, Homebrew, or a separate SQLite service.
+A native monitoring service and static React web interface for macOS 14+, implemented from the [feature specification](specs/001-hardware-monitor/spec.md). It includes account authentication, CPU/memory/disk/network monitoring, application rankings, persistent history, automatic en0 LAN access with HTTPS and account login, and local service management. The installed app does not require Node, Homebrew, or a separate SQLite service.
 
 The software implementation and development-machine checks are complete. Apple Silicon system-domain operation, mobile access, administrator authorization, sensor compatibility, and long-running performance still require hardware acceptance testing. The current release is a prerelease for that testing, not a claim that all release gates have passed.
 
 ## Install the prerelease
 
-Use [v0.1.6](https://github.com/cloudshadow/mac-monitor/releases/tag/v0.1.6). The v0.1.0 installer rejected normal `/Applications` permissions and could exit before installing anything. Run the following commands using the intended ordinary service-owner account. They select the archive for Apple Silicon or Intel and verify the installer and archive checksums:
+Use [v0.1.7](https://github.com/cloudshadow/mac-monitor/releases/tag/v0.1.7). The v0.1.0 installer rejected normal `/Applications` permissions and could exit before installing anything. Run the following commands using the intended ordinary service-owner account. They select the archive for Apple Silicon or Intel and verify the installer and archive checksums:
 
 ```bash
 (
   set -e
   cd "$HOME"
-  curl -fL https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.6/install.sh -o install-0.1.6.sh
-  echo "e6d3d3272573ae88b3226b28b3a7dcc69a2e055007f954f0ceb2c032fbf9e57e  install-0.1.6.sh" | shasum -a 256 -c -
+  curl -fL https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.7/install.sh -o install-0.1.7.sh
+  echo "5d82cf380ac15d8031e2ec87403fae0ed72bd2f310e59be96a92429676fb5191  install-0.1.7.sh" | shasum -a 256 -c -
   case "$(uname -m)" in
-    arm64) checksum=aa30b37b68cdb0d7b0258d89ad47da1637556c2229efc7945fae0ef2b1f15610 ;;
-    x86_64) checksum=1573ea3c5e7ce7acda1fc7a32552bb68346db055e4ec7d26a7e513243dbdfc00 ;;
+    arm64) checksum=c22b555df9b75841e9234115a4fe76170affa9fcd695e6ce661159e62247e5f5 ;;
+    x86_64) checksum=8e28f90a076ccd64bd5ee7d0788763c3dba525200ff8c1a00fc55c366e442755 ;;
     *) echo "Unsupported architecture"; exit 1 ;;
   esac
-  bash install-0.1.6.sh 0.1.6 https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.6 "$checksum"
+  bash install-0.1.7.sh 0.1.7 https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.7 "$checksum"
 )
 ```
 
@@ -29,7 +29,7 @@ Review the installer before running it. Downloads run without administrator priv
 open "/Applications/Cloud Mac Monitor.app"
 ```
 
-Closing the control window keeps monitoring active. Quit (⌘Q) stops the Agent for the current session without changing the boot preference; use Start service or Open monitor to resume. Open monitor refreshes the address and can request administrator authorization to restart an installed service. If shutdown fails, the app warns that monitoring may still be running and allows the control window to close. The control window and web header display version information. On first local access, the page shows the account creation form directly; no separate control-window setup action is required. The app uses free ad-hoc signing; first-launch macOS approval and policy restrictions remain part of hardware acceptance testing. See the [installation guide](docs/installation.md) for installed paths, offline installation, and troubleshooting. Do not change `/Applications` permissions to work around an installer error.
+Closing the control window keeps monitoring active. Quit (⌘Q) stops the Agent for the current session without changing the boot preference; use Start service or Open monitor to resume. Open monitor refreshes the address and can request administrator authorization to start an installed service. Two state-aware service buttons control the boot preference and the current running session independently. If shutdown fails, the app warns that monitoring may still be running and allows the control window to close. The control window and web header display version information. On first local access, the page shows the account creation form directly; no separate control-window setup action is required. The app uses free ad-hoc signing; first-launch macOS approval and policy restrictions remain part of hardware acceptance testing. See the [installation guide](docs/installation.md) for installed paths, offline installation, and troubleshooting. Do not change `/Applications` permissions to work around an installer error.
 
 The release includes arm64 and x86_64 archives, individual checksum files, and `SHA256SUMS`. Apple Silicon is the target for this release; the Intel package is provided for development diagnostics.
 
@@ -64,23 +64,23 @@ mkdir -m 700 /private/tmp/cloudmacmonitor-dev
 .build/debug/MonitorControl --data-root /private/tmp/cloudmacmonitor-dev
 ```
 
-Production ownership is bound by the installer to an ordinary UID and its GeneratedUID, rather than inferred from the current desktop login. The Agent runs as that user in a system LaunchDaemon. LAN access cannot be enabled before an account exists. First account creation is allowed directly from the same-origin loopback web page while no account exists; the LAN listener cannot create accounts. The compatible native setup link and device pairing tickets use the owner's Unix control channel, URL fragments, and single-use five-minute tickets. Password changes and device revocation invalidate the relevant sessions.
+Production ownership is bound by the installer to an ordinary UID and its GeneratedUID, rather than inferred from the current desktop login. The Agent runs as that user in a system LaunchDaemon. HTTPS LAN access is enabled automatically on the active IPv4 address of en0 and retries after network changes. Other interfaces are not selected as fallbacks. First account creation is allowed directly from the same-origin loopback page; the LAN listener returns to the Mac for setup and cannot create accounts. LAN clients trust this Mac's local CA certificate, then use the same username/password without device pairing. Loopback and LAN sessions remain separate, and password resets invalidate existing sessions and streams. Existing account/history databases and the local CA are preserved on upgrade.
 
 ## Package the app
 
 ```bash
-bash scripts/package-app.sh 0.1.6
-CMM_ARCH=arm64 bash scripts/package-app.sh 0.1.6
+bash scripts/package-app.sh 0.1.7
+CMM_ARCH=arm64 bash scripts/package-app.sh 0.1.7
 ```
 
-These commands produce `artifacts/CloudMacMonitor-0.1.6-<arch>.tar.gz`, its SHA-256 checksum file, and `artifacts/package/<arch>/Cloud Mac Monitor.app`. An Intel development machine can cross-compile the Apple Silicon package, but runtime compatibility still requires testing on the target hardware.
+These commands produce `artifacts/CloudMacMonitor-0.1.7-<arch>.tar.gz`, its SHA-256 checksum file, and `artifacts/package/<arch>/Cloud Mac Monitor.app`. An Intel development machine can cross-compile the Apple Silicon package, but runtime compatibility still requires testing on the target hardware.
 
 For offline installation, copy the matching archive, checksum file, and installer to the target Mac. Review the script and run it as the intended ordinary owner; the installer requests administrator authorization:
 
 ```bash
-package="artifacts/CloudMacMonitor-0.1.6-$(uname -m).tar.gz"
+package="artifacts/CloudMacMonitor-0.1.7-$(uname -m).tar.gz"
 expected="$(awk '{print $1}' "$package.sha256")"
-bash scripts/install.sh 0.1.6 --local "$package" "$expected"
+bash scripts/install.sh 0.1.7 --local "$package" "$expected"
 ```
 
 The download installer also accepts `scripts/install.sh VERSION HTTPS_RELEASE_BASE SHA256`. Its administrator phase rechecks the archive in a root-owned staging directory, rejects traversal and links, and installs the fixed app and LaunchDaemon paths. Upgrades preserve the account, history, and previous service-start preferences. The installer accepts the standard root:admin 775 permissions on `/Applications` without changing them. It stores the actual app in `/Library/Application Support/CloudMacMonitor/Cloud Mac Monitor.app` under root-owned, non-writable parents and creates a managed entry-point link at `/Applications/Cloud Mac Monitor.app`. The LaunchDaemon and administrator tool use the protected app path directly. Other installation parents remain strictly protected. The native update checker requires a configured `ReleaseRepository`; it is not configured in the current package.
