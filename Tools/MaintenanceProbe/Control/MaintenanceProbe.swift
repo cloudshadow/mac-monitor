@@ -7,7 +7,7 @@ struct MaintenanceProbeApp: App {
     @State private var output = "Isolated G4 prototype. Only the installed org.cloudmacmonitor.probe task is managed."
     @State private var busy = false
     var body: some Scene {
-        WindowGroup("Cloud Mac Monitor · G4") {
+        WindowGroup("Mac Monitor · G4") {
             VStack(alignment: .leading, spacing: 16) {
                 Text("System authorization probe").font(.title2)
                 Text("Install the signed probe bundle with scripts/install-maintenance-probe.sh first. Cancel authorization before any mutation to validate cancellation.")

@@ -3,8 +3,8 @@ import Foundation
 
 public enum InstallationLayout {
   public static let root = "/Library/Application Support/CloudMacMonitor"
-  public static let app = root + "/Cloud Mac Monitor.app"
-  public static let launcher = "/Applications/Cloud Mac Monitor.app"
+  public static let app = root + "/Mac Monitor.app"
+  public static let launcher = "/Applications/Mac Monitor.app"
   public static let maintenance = app + "/Contents/MacOS/MonitorMaintenance"
 }
 

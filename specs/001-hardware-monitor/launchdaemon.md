@@ -25,8 +25,8 @@
 
 | 内容 | 位置 | 权限/职责 |
 | --- | --- | --- |
-| 原生控制端、服务二进制、静态网页 | `/Library/Application Support/CloudMacMonitor/Cloud Mac Monitor.app` | 管理员安装，root拥有；所有父目录和包内可执行/库/资源均不可由普通用户替换 |
-| 应用程序入口 | `/Applications/Cloud Mac Monitor.app` | 指向受保护程序的 root 所有入口链接；允许 /Applications 默认 root:admin 775，服务与管理员工具不经此链接执行 |
+| 原生控制端、服务二进制、静态网页 | `/Library/Application Support/CloudMacMonitor/Mac Monitor.app` | 管理员安装，root拥有；所有父目录和包内可执行/库/资源均不可由普通用户替换 |
+| 应用程序入口 | `/Applications/Mac Monitor.app` | 指向受保护程序的 root 所有入口链接；允许 /Applications 默认 root:admin 775，服务与管理员工具不经此链接执行 |
 | 系统启动任务 | `/Library/LaunchDaemons/org.cloudmacmonitor.agent.plist` | root:wheel、0644，绝对程序路径和参数数组，不调用用户shell或读取用户PATH |
 | 系统配置及目录根 | `/Library/Application Support/CloudMacMonitor/` | root拥有，普通用户不可替换目录；保存所有者绑定及安装元信息 |
 | 数据库与受限日志 | 上述目录的 `data/` | 服务所有者拥有、0700；数据库及sidecar为0600；沿用history.sqlite/state.sqlite分离 |

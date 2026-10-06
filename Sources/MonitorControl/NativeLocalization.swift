@@ -4,7 +4,7 @@ import MonitorCore
 enum NativeLocalization {
   static let resources: [JSONValue] = {
     let packaged = Bundle.main.url(
-      forResource: "CloudMacMonitor_MonitorControl", withExtension: "bundle"
+      forResource: "MacMonitor_MonitorControl", withExtension: "bundle"
     ).flatMap(Bundle.init(url:))
     let bundle = packaged ?? Bundle.module
     guard let url = bundle.url(forResource: "native-languages", withExtension: "json"),

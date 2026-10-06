@@ -1,6 +1,6 @@
 # Third-party dependencies
 
-This file records dependencies; it does not license Cloud Mac Monitor itself. The project's license and copyright holder are still to be confirmed before public release.
+This file records dependencies; it does not license Mac Monitor itself. The project's license and copyright holder are still to be confirmed before public release.
 
 | Component | Version | License | Source |
 | --- | --- | --- | --- |

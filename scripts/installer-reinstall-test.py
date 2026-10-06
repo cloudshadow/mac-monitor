@@ -2,10 +2,12 @@
 """Exercise the installer's real old-installation decision block using temporary paths.
 Privilege/path policy is covered separately; no system job or production data is changed.
 """
-import json, os, pwd, pathlib, shlex, subprocess, tempfile
+import json, os, pwd, pathlib, plistlib, shlex, subprocess, tempfile
 project = pathlib.Path(__file__).resolve().parent.parent
 source = (project / 'scripts/install.sh').read_text()
 block = source[source.index('restart=false; enabled=true; legacy=false'):source.index("printf '{\"ownerName\"")]
+
+block = block.replace("renamed_launcher='/Applications/Cloud Mac Monitor.app'", 'renamed_launcher="$root/OldPublic.app"')
 
 def check(name, app_state, loaded=False, unsafe_data=False, expected_failure=False, boot_enabled=True):
     with tempfile.TemporaryDirectory(prefix='cmm-reinstall.', dir='/private/tmp') as folder:
@@ -15,12 +17,15 @@ def check(name, app_state, loaded=False, unsafe_data=False, expected_failure=Fal
         config = {'ownerUid': os.getuid(), 'ownerGuid': 'fixture-guid', 'bootEnabled': False}
         (root / 'installation.json').write_text(json.dumps(config))
         stage = root / 'stage'; stage.mkdir()
-        if app_state == 'healthy':
-            helper = app / 'Contents/MacOS/MonitorMaintenance'; helper.parent.mkdir(parents=True)
+        if app_state in ('healthy', 'renamed'):
+            installed = root / 'Cloud Mac Monitor.app' if app_state == 'renamed' else app
+            helper = installed / 'Contents/MacOS/MonitorMaintenance'; helper.parent.mkdir(parents=True)
             helper.write_text('''#!/bin/bash
 if [[ "$1" == status ]]; then echo '{"bootEnabled":true,"systemEnabled":true,"running":true}'; fi
 if [[ "$1" == stop ]]; then echo stopped > "${fixture_root}/stopped"; fi
 '''.replace('\"bootEnabled\":true,\"systemEnabled\":true', '\"bootEnabled\":'+str(boot_enabled).lower()+',\"systemEnabled\":'+str(boot_enabled).lower())); helper.chmod(0o755)
+            if app_state == 'renamed':
+                (installed / 'Contents/Info.plist').write_bytes(plistlib.dumps({'CFBundleIdentifier': 'org.cloudmacmonitor.control'}))
         elif app_state == 'partial': app.mkdir()
         elif app_state == 'symlink': app.symlink_to(root / 'missing')
         values = {'root': str(root), 'fixture_root': str(root), 'app': str(app), 'public_app': str(root / 'Public.app'), 'root_stage': str(stage), 'job': 'system/org.cloudmacmonitor.agent', 'plist': str(root / 'agent.plist'), 'owner_uid': str(os.getuid()), 'owner_name': pwd.getpwuid(os.getuid()).pw_name, 'owner_guid': 'fixture-guid'}
@@ -34,8 +39,8 @@ launchctl() { echo "$*" >> "$root/launchctl-calls"; if [[ "$1" == print ]]; then
         assert sentinel.read_bytes() == b'preserve-history'
         if unsafe_data: assert not (root / 'launchctl-calls').exists()
         if not expected_failure:
-            assert result.stdout.endswith(('true' if app_state != 'healthy' or boot_enabled else 'false')+' true'), (name, result.stdout)
-            if app_state == 'healthy': assert (root / 'stopped').exists()
+            assert result.stdout.endswith(('true' if app_state not in ('healthy', 'renamed') or boot_enabled else 'false')+' true'), (name, result.stdout)
+            if app_state in ('healthy', 'renamed'): assert (root / 'stopped').exists()
             else:
                 calls = (root / 'launchctl-calls').read_text()
                 assert 'disable system/org.cloudmacmonitor.agent' in calls
@@ -50,3 +55,6 @@ check('dangling app link remains refused', 'symlink', expected_failure=True)
 check('unsafe data remains refused', 'missing', unsafe_data=True, expected_failure=True)
 
 check('running upgrade preserves disabled boot preference', 'healthy', boot_enabled=False)
+
+check('renamed product preserves existing service and data', 'renamed')
+check('renamed product preserves disabled boot preference', 'renamed', boot_enabled=False)

@@ -9,11 +9,14 @@ type Plural = {
 };
 type Dictionary = Record<string, string | Plural>;
 let current: Language = "en",
-  generation = 0;
+  requestedLanguage: Language = "en",
+  generation = 0,
+  resourceRevision = 0;
 let dictionaries: Record<string, Dictionary> = {},
   english: Record<string, Dictionary> = {};
 const subscribers = new Set<() => void>();
 const inflight = new Map<string, Promise<Dictionary>>();
+const requiredNamespaces = new Set(["common", "errors"]);
 const notify = () => subscribers.forEach((fn) => fn());
 function match(value: string): Language | undefined {
   const lower = value.toLowerCase();
@@ -59,12 +62,12 @@ export async function selectLanguage(
   tag: Language,
   namespaces: string[] = ["common", "auth", "errors"],
 ) {
+  requestedLanguage = tag;
+  namespaces.forEach((ns) => requiredNamespaces.add(ns));
   const revision = ++generation;
   const needed = [
     ...new Set([
-      "common",
-      "errors",
-      ...namespaces,
+      ...requiredNamespaces,
       ...Object.keys(dictionaries),
     ]),
   ];
@@ -83,10 +86,11 @@ export async function selectLanguage(
   try {
     localStorage.setItem("language", tag);
   } catch {}
+  resourceRevision++;
   notify();
 }
 export async function ensureNamespaces(namespaces: string[]) {
-  return selectLanguage(current, namespaces);
+  return selectLanguage(requestedLanguage, namespaces);
 }
 export function translate<K extends MessageKey>(
   key: K,
@@ -95,6 +99,8 @@ export function translate<K extends MessageKey>(
     : [MessageParameters[K]]
 ): string {
   const [ns, name] = key.split(":");
+  if (!dictionaries[ns] && !english[ns])
+    return (dictionaries.common?.loading as string) || "Loading…";
   const message = dictionaries[ns]?.[name] ?? english[ns]?.[name];
   const parameters = (args[0] ?? {}) as Record<string, string | number>;
   let text = typeof message === "string" ? message : undefined;
@@ -136,15 +142,16 @@ export function translate<K extends MessageKey>(
     .replaceAll("\u0002", "}");
 }
 export function useI18n() {
-  const language = useSyncExternalStore(
+  useSyncExternalStore(
     (fn) => {
       subscribers.add(fn);
       return () => {
         subscribers.delete(fn);
       };
     },
-    () => current,
+    () => resourceRevision,
   );
+  const language = current;
   return {
     t: translate,
     language,

@@ -1,32 +1,34 @@
-# Cloud Mac Monitor
+# Mac Monitor
 
 A native monitoring service and static React web interface for macOS 14+, implemented from the [feature specification](specs/001-hardware-monitor/spec.md). It includes account authentication, CPU/memory/disk/network monitoring, application rankings, persistent history, automatic en0 LAN access with HTTPS and account login, and local service management. The installed app does not require Node, Homebrew, or a separate SQLite service.
 
 The software implementation and development-machine checks are complete. Apple Silicon system-domain operation, mobile access, administrator authorization, sensor compatibility, and long-running performance still require hardware acceptance testing. The current release is a prerelease for that testing, not a claim that all release gates have passed.
 
+![Mac Monitor overview](docs/screenshots/mac-monitor-overview.jpg)
+
 ## Install the prerelease
 
-Use [v0.1.7](https://github.com/cloudshadow/mac-monitor/releases/tag/v0.1.7). The v0.1.0 installer rejected normal `/Applications` permissions and could exit before installing anything. Run the following commands using the intended ordinary service-owner account. They select the archive for Apple Silicon or Intel and verify the installer and archive checksums:
+Use [v0.1.8](https://github.com/cloudshadow/mac-monitor/releases/tag/v0.1.8). The v0.1.0 installer rejected normal `/Applications` permissions and could exit before installing anything. Run the following commands using the intended ordinary service-owner account. They select the archive for Apple Silicon or Intel and verify the installer and archive checksums:
 
 ```bash
 (
   set -e
   cd "$HOME"
-  curl -fL https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.7/install.sh -o install-0.1.7.sh
-  echo "5d82cf380ac15d8031e2ec87403fae0ed72bd2f310e59be96a92429676fb5191  install-0.1.7.sh" | shasum -a 256 -c -
+  curl -fL https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.8/install.sh -o install-0.1.8.sh
+  echo "42ed04b1e15b6a87ad68d1439753a66004720c971235aba225a591c029f7969f  install-0.1.8.sh" | shasum -a 256 -c -
   case "$(uname -m)" in
-    arm64) checksum=c22b555df9b75841e9234115a4fe76170affa9fcd695e6ce661159e62247e5f5 ;;
-    x86_64) checksum=8e28f90a076ccd64bd5ee7d0788763c3dba525200ff8c1a00fc55c366e442755 ;;
+    arm64) checksum=7792c66db770690ea1ed470d84b2309542babb43d0ddc9560d4523d88cfbbcbe ;;
+    x86_64) checksum=359cd8ed5dec4f8a650b4e0432f7005c880e10f034b2485b2d2e20056d13da13 ;;
     *) echo "Unsupported architecture"; exit 1 ;;
   esac
-  bash install-0.1.7.sh 0.1.7 https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.7 "$checksum"
+  bash install-0.1.8.sh 0.1.8 https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.8 "$checksum"
 )
 ```
 
-Review the installer before running it. Downloads run without administrator privileges; installation requests an administrator password, which Terminal does not display as you type. Wait for `Installed. Open /Applications/Cloud Mac Monitor.app; approve Gatekeeper when prompted.` before opening the app:
+Review the installer before running it. Downloads run without administrator privileges; installation requests an administrator password, which Terminal does not display as you type. Wait for `Installed. Open /Applications/Mac Monitor.app; approve Gatekeeper when prompted.` before opening the app:
 
 ```bash
-open "/Applications/Cloud Mac Monitor.app"
+open "/Applications/Mac Monitor.app"
 ```
 
 Closing the control window keeps monitoring active. Quit (⌘Q) stops the Agent for the current session without changing the boot preference; use Start service or Open monitor to resume. Open monitor refreshes the address and can request administrator authorization to start an installed service. Two state-aware service buttons control the boot preference and the current running session independently. If shutdown fails, the app warns that monitoring may still be running and allows the control window to close. The control window and web header display version information. On first local access, the page shows the account creation form directly; no separate control-window setup action is required. The app uses free ad-hoc signing; first-launch macOS approval and policy restrictions remain part of hardware acceptance testing. See the [installation guide](docs/installation.md) for installed paths, offline installation, and troubleshooting. Do not change `/Applications` permissions to work around an installer error.
@@ -69,21 +71,21 @@ Production ownership is bound by the installer to an ordinary UID and its Genera
 ## Package the app
 
 ```bash
-bash scripts/package-app.sh 0.1.7
-CMM_ARCH=arm64 bash scripts/package-app.sh 0.1.7
+bash scripts/package-app.sh 0.1.8
+CMM_ARCH=arm64 bash scripts/package-app.sh 0.1.8
 ```
 
-These commands produce `artifacts/CloudMacMonitor-0.1.7-<arch>.tar.gz`, its SHA-256 checksum file, and `artifacts/package/<arch>/Cloud Mac Monitor.app`. An Intel development machine can cross-compile the Apple Silicon package, but runtime compatibility still requires testing on the target hardware.
+These commands produce `artifacts/MacMonitor-0.1.8-<arch>.tar.gz`, its SHA-256 checksum file, and `artifacts/package/<arch>/Mac Monitor.app`. An Intel development machine can cross-compile the Apple Silicon package, but runtime compatibility still requires testing on the target hardware.
 
 For offline installation, copy the matching archive, checksum file, and installer to the target Mac. Review the script and run it as the intended ordinary owner; the installer requests administrator authorization:
 
 ```bash
-package="artifacts/CloudMacMonitor-0.1.7-$(uname -m).tar.gz"
+package="artifacts/MacMonitor-0.1.8-$(uname -m).tar.gz"
 expected="$(awk '{print $1}' "$package.sha256")"
-bash scripts/install.sh 0.1.7 --local "$package" "$expected"
+bash scripts/install.sh 0.1.8 --local "$package" "$expected"
 ```
 
-The download installer also accepts `scripts/install.sh VERSION HTTPS_RELEASE_BASE SHA256`. Its administrator phase rechecks the archive in a root-owned staging directory, rejects traversal and links, and installs the fixed app and LaunchDaemon paths. Upgrades preserve the account, history, and previous service-start preferences. The installer accepts the standard root:admin 775 permissions on `/Applications` without changing them. It stores the actual app in `/Library/Application Support/CloudMacMonitor/Cloud Mac Monitor.app` under root-owned, non-writable parents and creates a managed entry-point link at `/Applications/Cloud Mac Monitor.app`. The LaunchDaemon and administrator tool use the protected app path directly. Other installation parents remain strictly protected. The native update checker requires a configured `ReleaseRepository`; it is not configured in the current package.
+The download installer also accepts `scripts/install.sh VERSION HTTPS_RELEASE_BASE SHA256`. Its administrator phase rechecks the archive in a root-owned staging directory, rejects traversal and links, and installs the fixed app and LaunchDaemon paths. Upgrades preserve the account, history, and previous service-start preferences. The installer accepts the standard root:admin 775 permissions on `/Applications` without changing them. It stores the actual app in `/Library/Application Support/CloudMacMonitor/Mac Monitor.app` under root-owned, non-writable parents and creates a managed entry-point link at `/Applications/Mac Monitor.app`. The LaunchDaemon and administrator tool use the protected app path directly. Other installation parents remain strictly protected. The native update checker uses `ReleaseRepository` from the app bundle, configured as `cloudshadow/mac-monitor`. It checks published releases including prereleases and only offers a newer version. Local HTTP and LAN HTTPS share the local listener’s port (normally 8765), on separate IP addresses. Use Monitor port / Apply port in the control window to save and immediately apply a custom port (1–65535). A rejected change identifies the conflicting address and preserves the current configuration; startup fallback displays a warning with the configured and actual ports. If that port is occupied on the LAN address, local monitoring remains available and the control window reports the LAN error.
 
 ## Monitoring and history
 

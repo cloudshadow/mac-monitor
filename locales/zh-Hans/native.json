@@ -1,5 +1,5 @@
 {
-  "title": "Cloud Mac Monitor",
+  "title": "Mac Monitor",
   "open": "打开监测页面",
   "setup": "创建账户",
   "refresh": "刷新状态",
@@ -34,5 +34,15 @@
   "browserFailed": "无法打开浏览器，请将监控地址复制到浏览器。",
   "lanUnavailable": "en0 局域网暂不可用（{code}），本机监控仍可使用。",
   "certificate": "HTTPS CA 证书：{path}",
-  "checking": "正在检查状态…"
+  "checking": "正在检查状态…",
+  "upToDate": "当前已是最新版本。",
+  "updateFailed": "检查更新失败：{reason}",
+  "port": "监测端口",
+  "applyPort": "应用端口",
+  "portHelp": "本机 HTTP 与局域网 HTTPS 共用端口（1–65535）。修改后立即生效并保存，下次启动沿用。修改后请重新打开监测页面。",
+  "invalidPort": "请输入 1 到 65535 之间的整数端口号。",
+  "localPortInUse": "本机端口 {port} 已被占用，请选择其他端口；当前配置保持生效。",
+  "lanPortInUse": "局域网端口 {port} 已被占用，请选择其他端口；本机监控仍可使用。",
+  "portBindFailed": "无法监听端口 {port}，请检查权限或选择其他端口；当前配置保持生效。",
+  "portFallback": "配置的本机端口 {configured} 不可用，暂时使用 {actual}；请选择可用端口并应用。"
 }

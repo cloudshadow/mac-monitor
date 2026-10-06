@@ -10,7 +10,7 @@ architecture="$(uname -m)"
 [[ "$architecture" == arm64 || "$architecture" == x86_64 ]] || exit 64
 stage="$(mktemp -d /private/tmp/cloudmacmonitor-download.XXXXXXXX)"
 trap 'rm -rf "$stage"' EXIT
-archive="CloudMacMonitor-$version-$architecture.tar.gz"
+archive="MacMonitor-$version-$architecture.tar.gz"
 if [[ "$base" == --local ]]; then
   [[ -f "$3" && ! -L "$3" && "$(basename "$3")" == "$archive" ]] || { echo 'Local archive must match version and architecture.' >&2; exit 64; }
   [[ "$(stat -f %z "$3")" -le 134217728 ]] || exit 64
@@ -30,8 +30,8 @@ sudo /bin/bash -s -- "$stage/archive.tar.gz" "$expected" "$owner_name" "$owner_u
 set -euo pipefail
 source_archive="$1"; expected="$2"; owner_name="$3"; owner_uid="$4"; owner_guid="$5"
 root='/Library/Application Support/CloudMacMonitor'
-app="$root/Cloud Mac Monitor.app"
-public_app='/Applications/Cloud Mac Monitor.app'
+app="$root/Mac Monitor.app"
+public_app='/Applications/Mac Monitor.app'
 job='system/org.cloudmacmonitor.agent'
 plist='/Library/LaunchDaemons/org.cloudmacmonitor.agent.plist'
 [[ "$owner_uid" =~ ^[0-9]+$ && "$owner_uid" != 0 && "$owner_name" =~ ^[A-Za-z0-9._-]+$ && "$expected" =~ ^[a-fA-F0-9]{64}$ ]] || exit 1
@@ -64,12 +64,12 @@ install -m 600 -o root -g wheel "$source_archive" "$root_stage/archive.tar.gz"
 [[ "$(shasum -a 256 "$root_stage/archive.tar.gz" | awk '{print $1}')" == "$expected" ]] || exit 1
 # tar output must contain only the fixed app root, with no traversal, links or special files.
 tar -tzf "$root_stage/archive.tar.gz" > "$root_stage/entries"
-awk 'BEGIN {ok=1} !/^Cloud Mac Monitor\.app\// {ok=0} /(^|\/)\.\.(\/|$)/ {ok=0} /\\/ {ok=0} END {exit !ok}' "$root_stage/entries"
+awk 'BEGIN {ok=1} !/^Mac Monitor\.app\// {ok=0} /(^|\/)\.\.(\/|$)/ {ok=0} /\\/ {ok=0} END {exit !ok}' "$root_stage/entries"
 [[ "$(wc -l < "$root_stage/entries")" -le 10000 ]] || exit 1
 tar -tvzf "$root_stage/archive.tar.gz" | awk 'substr($0,1,1)!="-" && substr($0,1,1)!="d" {exit 1}'
 mkdir "$root_stage/extract"
 tar -xzf "$root_stage/archive.tar.gz" -C "$root_stage/extract" --no-same-owner
-new_app="$root_stage/extract/Cloud Mac Monitor.app"
+new_app="$root_stage/extract/Mac Monitor.app"
 [[ -d "$new_app" && -z "$(find "$new_app" -type l -print -quit)" && -z "$(find "$new_app" -perm -4000 -print -quit)" ]] || exit 1
 codesign --verify --deep --strict "$new_app"
 for name in MonitorAgent MonitorControl MonitorMaintenance; do [[ -f "$new_app/Contents/MacOS/$name" && -x "$new_app/Contents/MacOS/$name" ]] || exit 1; done
@@ -82,12 +82,25 @@ elif [[ -e "$public_app" ]]; then
   [[ -e "$root/installation.json" && ! -e "$app" && "$(plutil -extract CFBundleIdentifier raw -o - "$public_app/Contents/Info.plist")" == org.cloudmacmonitor.control ]] || { echo 'Unmanaged or unsafe legacy app; reviewed migration required.' >&2; exit 1; }
   legacy=true
 fi
+# Keep the existing storage/service identity while migrating the visible app name.
+renamed_app="$root/Cloud Mac Monitor.app"
+renamed_launcher='/Applications/Cloud Mac Monitor.app'
+renaming=false
+if [[ ! -e "$app" && -e "$renamed_app" ]]; then
+  protected_parent "$renamed_app"
+  [[ "$(plutil -extract CFBundleIdentifier raw -o - "$renamed_app/Contents/Info.plist")" == org.cloudmacmonitor.control ]] || exit 1
+  if [[ -e "$renamed_launcher" || -L "$renamed_launcher" ]]; then
+    [[ -L "$renamed_launcher" && "$(stat -f %u "$renamed_launcher")" == 0 && "$(readlink "$renamed_launcher")" == "$renamed_app" ]] || { echo 'Unmanaged previous launcher; nothing replaced.' >&2; exit 1; }
+  fi
+  renaming=true
+fi
 old="$root/previous.app"
 [[ ! -e "$old" && ! -L "$old" ]] || { echo 'Previous recovery bundle exists; inspect it before retrying.' >&2; exit 1; }
 if [[ -e "$root/installation.json" ]]; then
   protected_parent "$root/installation.json"
   [[ "$(plutil -extract ownerUid raw -o - "$root/installation.json")" == "$owner_uid" && "$(plutil -extract ownerGuid raw -o - "$root/installation.json")" == "$owner_guid" ]] || { echo 'Owner migration requires an explicit reviewed migration.' >&2; exit 1; }
   installed_app="$app"
+  if [[ "$renaming" == true ]]; then installed_app="$renamed_app"; fi
   if [[ "$legacy" == true ]]; then installed_app="$public_app"; fi
   if [[ ! -e "$installed_app" && ! -L "$installed_app" ]]; then
     # Uninstall preserves installation.json and data unless deletion was requested.
@@ -117,7 +130,8 @@ else
 fi
 printf '{"ownerName":"%s","ownerUid":%s,"ownerGuid":"%s","bootEnabled":%s}\n' "$owner_name" "$owner_uid" "$owner_guid" "$enabled" > "$root_stage/installation.json"
 install -m 644 -o root -g wheel "$root_stage/installation.json" "$root/installation.json"
-if [[ "$legacy" == true ]]; then mv "$public_app" "$old";
+if [[ "$renaming" == true ]]; then mv "$renamed_app" "$old";
+elif [[ "$legacy" == true ]]; then mv "$public_app" "$old";
 elif [[ -e "$app" ]]; then protected_parent "$app"; mv "$app" "$old"; fi
 mv "$new_app" "$app"
 chown -R root:wheel "$app"; chmod -R go-w "$app"
@@ -137,6 +151,7 @@ if [[ "$restart" == true ]]; then
   fi
   if [[ "$enabled" != true ]]; then launchctl disable "$job"; fi
 fi
+if [[ "$renaming" == true && -L "$renamed_launcher" ]]; then rm "$renamed_launcher"; fi
 rm -rf "$old"
-echo 'Installed. Open /Applications/Cloud Mac Monitor.app; approve Gatekeeper when prompted.'
+echo 'Installed. Open /Applications/Mac Monitor.app; approve Gatekeeper when prompted.'
 ROOT

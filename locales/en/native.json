@@ -1,5 +1,5 @@
 {
-  "title": "Cloud Mac Monitor",
+  "title": "Mac Monitor",
   "open": "Open monitor",
   "setup": "Create account",
   "refresh": "Refresh status",
@@ -34,5 +34,15 @@
   "browserFailed": "The browser could not be opened. Copy the monitor address into your browser.",
   "lanUnavailable": "LAN on en0 is unavailable ({code}); local monitoring remains available.",
   "certificate": "HTTPS CA certificate: {path}",
-  "checking": "Checking status…"
+  "checking": "Checking status…",
+  "upToDate": "You are up to date.",
+  "updateFailed": "Could not check for updates: {reason}",
+  "port": "Monitor port",
+  "applyPort": "Apply port",
+  "portHelp": "Use one port (1–65535) for local HTTP and LAN HTTPS. Changes take effect immediately and are saved for the next start. Reopen the monitor after changing the port.",
+  "invalidPort": "Enter a whole port number from 1 to 65535.",
+  "localPortInUse": "Local port {port} is already in use. Choose another port; the current configuration remains active.",
+  "lanPortInUse": "LAN port {port} is already in use. Choose another port; local monitoring remains available.",
+  "portBindFailed": "Could not listen on port {port}. Check permissions or choose another port; the current configuration remains active.",
+  "portFallback": "Configured local port {configured} is unavailable. Temporarily using {actual}; choose and apply an available port."
 }

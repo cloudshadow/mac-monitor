@@ -1,5 +1,5 @@
 {
-  "title": "Cloud Mac Monitor",
+  "title": "Mac Monitor",
   "overview": "Overview",
   "apps": "Applications",
   "history": "History",
@@ -17,5 +17,6 @@
   "warmingUp": "Establishing baseline",
   "unsupported": "Not supported",
   "permissionDenied": "Permission denied",
-  "powerOrThermalConstraint": "Reduced sampling for power or thermal conditions"
+  "powerOrThermalConstraint": "Reduced sampling for power or thermal conditions",
+  "online": "Online"
 }

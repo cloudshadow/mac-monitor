@@ -38,6 +38,8 @@ int cmm_read_system(cmm_system_sample *s) {
         s->inactive_bytes = (uint64_t)vm.inactive_count * page;
         s->wired_bytes = (uint64_t)vm.wire_count * page;
         s->compressor_bytes = (uint64_t)vm.compressor_page_count * page;
+        s->purgeable_bytes = (uint64_t)vm.purgeable_count * page;
+        s->file_backed_bytes = (uint64_t)vm.external_page_count * page;
     }
     struct xsw_usage swap;
     size = sizeof(swap);

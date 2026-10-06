@@ -15,7 +15,7 @@
 使用 M 系列 Mac、macOS 14+、Swift 6/Xcode 工具链；React + TypeScript + Vite前端构建需要Node（仅开发时）。锁定依赖后：
 
 ```bash
-cd cloud-mac-monitor
+cd mac-monitor
 npm ci --prefix web
 npm run build --prefix web
 swift build -c release

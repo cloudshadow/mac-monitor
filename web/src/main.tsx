@@ -21,13 +21,12 @@ const fragment = new URLSearchParams(location.hash.slice(1)),
 if (location.hash)
   history.replaceState(null, "", location.pathname + location.search);
 function App() {
-  const { t, language, number } = useI18n(),
+  const { t, language } = useI18n(),
     [status, setStatus] = useState("loading"),
     [page, setPage] = useState("overview"),
     [error, setError] = useState(""),
     [ready, setReady] = useState(false),
     [age, setAge] = useState(0),
-    [storage, setStorage] = useState<Record<string, any>>(),
     metrics = useMetrics();
   async function restore() {
     try {
@@ -66,13 +65,9 @@ function App() {
         : page === "applications"
           ? "apps"
           : page;
-    void ensureNamespaces([ns, "auth"]).catch(() =>
+    void ensureNamespaces([ns, "auth", "settings"]).catch(() =>
       setError("serviceUnavailable"),
     );
-    if (page === "settings" && status === "authenticated")
-      void api("/history/status")
-        .then(setStorage)
-        .catch(() => {});
   }, [page, status, ready]);
   useEffect(() => {
     const timer = setInterval(
@@ -97,14 +92,38 @@ function App() {
       setError(e instanceof APIError ? e.code : "serviceUnavailable");
     }
   }
-  if (!ready) return <main>Cloud Mac Monitor…</main>;
+  if (!ready) return <main>Mac Monitor…</main>;
   return (
     <>
       <header>
-        <a className="brand" href="/">
-          {t("common:title")}
-        </a>
-        <span className="version">v{__APP_VERSION__}</span>
+        <div className="brand-block">
+          <a className="brand" href="/">
+            <img className="brand-mark" src="/logo.png" alt="" />
+            <span>{t("common:title")}</span>
+          </a>
+          <span className="version">v{__APP_VERSION__}</span>
+        </div>
+
+        {status === "authenticated" && (
+            <nav>
+              {(
+                ["overview", "applications", "history"] as const
+              ).map((p) => (
+                <button
+                  aria-current={page === p ? "page" : undefined}
+                  key={p}
+                  onClick={() => setPage(p)}
+                >
+                  {t(
+                    ("common:" +
+                      (p === "applications" ? "apps" : p)) as "common:overview",
+                  )}
+                </button>
+              ))}
+            </nav>
+        )}
+        <div className="header-actions">
+        {status === "authenticated" && <span className={"connection-badge " + metrics.connection}><i />{metrics.connection === "connected" ? t("common:online") : t("common:loading")}</span>}
         <select
           aria-label={t("settings:language")}
           value={language}
@@ -123,26 +142,11 @@ function App() {
         {status === "authenticated" && (
           <button onClick={() => void logout()}>{t("common:logout")}</button>
         )}
+        </div>
       </header>
-      <main>
+      <main className={status === "authenticated" && page === "overview" ? "overview-main" : undefined}>
         {status === "authenticated" ? (
           <>
-            <nav>
-              {(
-                ["overview", "applications", "history", "settings"] as const
-              ).map((p) => (
-                <button
-                  aria-current={page === p ? "page" : undefined}
-                  key={p}
-                  onClick={() => setPage(p)}
-                >
-                  {t(
-                    ("common:" +
-                      (p === "applications" ? "apps" : p)) as "common:overview",
-                  )}
-                </button>
-              ))}
-            </nav>
             {metrics.connection === "offline" && (
               <p role="status" className="notice">
                 {t("common:offline")}
@@ -153,23 +157,8 @@ function App() {
               <Overview />
             ) : page === "applications" ? (
               <Applications />
-            ) : page === "history" ? (
-              <History />
             ) : (
-              <section className="card">
-                <h1>{t("common:settings")}</h1>
-                <p>{t("settings:local")}</p>
-                {storage && (
-                  <p>
-                    {t("settings:storage", {
-                      size:
-                        number(storage.diskBytes / 1048576, {
-                          maximumFractionDigits: 1,
-                        }) + " MiB",
-                    })}
-                  </p>
-                )}
-              </section>
+              <History />
             )}
           </>
         ) : status === "loading" ? (

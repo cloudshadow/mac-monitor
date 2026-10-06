@@ -26,7 +26,7 @@ export function TimeSeries({
       const context = canvas!.getContext("2d")!;
       context.scale(dpr, dpr);
       context.clearRect(0, 0, width, height);
-      context.strokeStyle = "#2e857a";
+      context.strokeStyle = getComputedStyle(canvas!).getPropertyValue("--accent").trim() || "#0099FF";
       context.lineWidth = 2;
       if (!points.length) return;
       const min = points[0].bucketStartUtc,

@@ -6,19 +6,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cloud Mac Monitor"
+            "value": "Mac Monitor"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cloud Mac Monitor"
+            "value": "Mac Monitor"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cloud Mac Monitor"
+            "value": "Mac Monitor"
           }
         }
       }
@@ -789,6 +789,226 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在檢查狀態…"
+          }
+        }
+      }
+    },
+    "upToDate": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You are up to date."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前已是最新版本。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目前已是最新版本。"
+          }
+        }
+      }
+    },
+    "updateFailed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not check for updates: %1$@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "检查更新失败：%1$@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "檢查更新失敗：%1$@"
+          }
+        }
+      }
+    },
+    "port": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Monitor port"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "监测端口"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "監測連接埠"
+          }
+        }
+      }
+    },
+    "applyPort": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apply port"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "应用端口"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "套用連接埠"
+          }
+        }
+      }
+    },
+    "portHelp": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use one port (1–65535) for local HTTP and LAN HTTPS. Changes take effect immediately and are saved for the next start. Reopen the monitor after changing the port."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本机 HTTP 与局域网 HTTPS 共用端口（1–65535）。修改后立即生效并保存，下次启动沿用。修改后请重新打开监测页面。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本機 HTTP 與區域網路 HTTPS 共用連接埠（1–65535）。修改後立即生效並儲存，下次啟動沿用。修改後請重新開啟監測頁面。"
+          }
+        }
+      }
+    },
+    "invalidPort": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter a whole port number from 1 to 65535."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请输入 1 到 65535 之间的整数端口号。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "請輸入 1 到 65535 之間的整數連接埠號碼。"
+          }
+        }
+      }
+    },
+    "localPortInUse": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local port %1$@ is already in use. Choose another port; the current configuration remains active."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本机端口 %1$@ 已被占用，请选择其他端口；当前配置保持生效。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本機連接埠 %1$@ 已被占用，請選擇其他連接埠；目前設定維持生效。"
+          }
+        }
+      }
+    },
+    "lanPortInUse": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LAN port %1$@ is already in use. Choose another port; local monitoring remains available."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "局域网端口 %1$@ 已被占用，请选择其他端口；本机监控仍可使用。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "區域網路連接埠 %1$@ 已被占用，請選擇其他連接埠；本機監控仍可使用。"
+          }
+        }
+      }
+    },
+    "portBindFailed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not listen on port %1$@. Check permissions or choose another port; the current configuration remains active."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法监听端口 %1$@，请检查权限或选择其他端口；当前配置保持生效。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法監聽連接埠 %1$@，請檢查權限或選擇其他連接埠；目前設定維持生效。"
+          }
+        }
+      }
+    },
+    "portFallback": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configured local port %2$@ is unavailable. Temporarily using %1$@; choose and apply an available port."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配置的本机端口 %2$@ 不可用，暂时使用 %1$@；请选择可用端口并应用。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "設定的本機連接埠 %2$@ 無法使用，暫時使用 %1$@；請選擇可用連接埠並套用。"
           }
         }
       }

@@ -17,12 +17,12 @@ First build and inspect the probe bundle. The following installer requires an ex
 
 ```bash
 bash scripts/build-maintenance-probe.sh
-sudo bash scripts/install-maintenance-probe.sh "$PWD/artifacts/Cloud Mac Monitor Probe.app"
+sudo bash scripts/install-maintenance-probe.sh "$PWD/artifacts/Mac Monitor Probe.app"
 ```
 
 The local installer copies to root-protected staging and validates the copy, binds `SUDO_UID`/local GeneratedUID, installs root-owned app/plist and owner-only data. It refuses existing paths. It does not register/start the task; use the installed app's explicit `enable` command.
 
-1. Open `/Applications/Cloud Mac Monitor Probe.app`. Click status, cancel authorization, and confirm neither the job nor operation journal changed.
+1. Open `/Applications/Mac Monitor Probe.app`. Click status, cancel authorization, and confirm neither the job nor operation journal changed.
 2. Click enable, then status. Verify launchctl reports `system/org.cloudmacmonitor.probe`, ordinary process UID, actual loaded/running states and the benchmark's loopback listener.
 3. Click disable and verify the current PID remains running. After stop, start must return serviceDisabled. Explicit enable should start again.
 4. Test authorization cancellation before each mutation, then stop/uninstall. Inspect `/Library/Application Support/CloudMacMonitorProbe/operation.json` on failure. Do not infer running from plist existence.
@@ -32,7 +32,7 @@ The local installer copies to root-protected staging and validates the copy, bin
 
 | Gate/scenario | Status | Evidence |
 | --- | --- | --- |
-| G4 compile/ad-hoc bundle | Passed on current Intel development host | Release build, `codesign --verify --strict --deep` and Info.plist lint passed; local bundle at `artifacts/Cloud Mac Monitor Probe.app` |
+| G4 compile/ad-hoc bundle | Passed on current Intel development host | Release build, `codesign --verify --strict --deep` and Info.plist lint passed; local bundle at `artifacts/Mac Monitor Probe.app` |
 | sudo system installation | Not executed | Requires an authorized system mutation |
 | GUI authorization + cancellation | Not executed | Requires desktop interaction on target Mac |
 | ordinary UID / no desktop session | Not executed | Current process is interactive on Intel |
@@ -60,6 +60,6 @@ Read-only `launchctl print-disabled system` inspection on macOS 15.7.9 returned 
 
 ## v0.1.1 installation-path correction
 
-The v0.1.0 installer rejected the standard root:admin 775 `/Applications` directory before copying the app. v0.1.1 accepts this entry-point directory without chmod, stores the real bundle at `/Library/Application Support/CloudMacMonitor/Cloud Mac Monitor.app`, and creates a root-owned launcher symlink at `/Applications/Cloud Mac Monitor.app`. Both launchd and the fixed administrator tool execute from the protected bundle, not through the public link. The link is replaced using atomic rename and never follows or deletes an unrelated destination. Account/history/TLS data locations are unchanged.
+The v0.1.0 installer rejected the standard root:admin 775 `/Applications` directory before copying the app. v0.1.1 accepts this entry-point directory without chmod, stores the real bundle at `/Library/Application Support/CloudMacMonitor/Mac Monitor.app`, and creates a root-owned launcher symlink at `/Applications/Mac Monitor.app`. Both launchd and the fixed administrator tool execute from the protected bundle, not through the public link. The link is replaced using atomic rename and never follows or deletes an unrelated destination. Account/history/TLS data locations are unchanged.
 
 Four installation regression tests cover the default directory policy, managed link replacement/removal, unrelated directory/link preservation, and interrupted staging-link recovery. Live administrator installation and launchd registration remain target-machine acceptance tests. A legacy v0.1.0 real bundle can migrate only while its complete original code path is protected; an unsafe or unmanaged legacy entry is refused without executing its helper.

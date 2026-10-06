@@ -69,13 +69,13 @@ public final class TLSIdentity {
     {
       let config = directory + "/ca-config"
       try Data(
-        "[req]\ndistinguished_name=dn\nx509_extensions=ca\n[dn]\nCN=Cloud Mac Monitor Local CA\n[ca]\nbasicConstraints=critical,CA:TRUE\nkeyUsage=critical,keyCertSign,cRLSign\nsubjectKeyIdentifier=hash\nauthorityKeyIdentifier=keyid:always\n"
+        "[req]\ndistinguished_name=dn\nx509_extensions=ca\n[dn]\nCN=Mac Monitor Local CA\n[ca]\nbasicConstraints=critical,CA:TRUE\nkeyUsage=critical,keyCertSign,cRLSign\nsubjectKeyIdentifier=hash\nauthorityKeyIdentifier=keyid:always\n"
           .utf8
       ).write(to: URL(fileURLWithPath: config))
       chmod(config, 0o600)
       try run([
         "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-keyout", caKey, "-out", caCertificate,
-        "-days", "3650", "-subj", "/CN=Cloud Mac Monitor Local CA", "-config", config,
+        "-days", "3650", "-subj", "/CN=Mac Monitor Local CA", "-config", config,
       ])
       unlink(config)
     }
@@ -94,7 +94,7 @@ public final class TLSIdentity {
       chmod(config, 0o600)
       try run([
         "req", "-new", "-newkey", "rsa:2048", "-nodes", "-keyout", temporary + ".key", "-out",
-        temporary + ".csr", "-subj", "/CN=Cloud Mac Monitor",
+        temporary + ".csr", "-subj", "/CN=Mac Monitor",
       ])
       try run([
         "x509", "-req", "-in", temporary + ".csr", "-CA", caCertificate, "-CAkey", caKey,

@@ -10,6 +10,8 @@ public struct BasicSystemSample: Codable, Sendable {
   public let physicalMemoryBytes: UInt64?
   public let freeBytes: UInt64?, speculativeBytes: UInt64?, activeBytes: UInt64?
   public let inactiveBytes: UInt64?, wiredBytes: UInt64?, compressorBytes: UInt64?
+  public let appMemoryBytes: UInt64?
+  public let appWiredPercent: Metric
   public let nonIdlePercent: Metric
   public let swapUsedBytes: Metric
   public let memoryPressure: String
@@ -21,6 +23,14 @@ public final class BasicSystemCollector {
   private var cpu = CPUBaseline()
   public init() {}
   public func reset() { cpu.reset() }
+  // Match the VM-counter estimate used by Stats. Active pages alone include file cache.
+  // https://github.com/exelban/stats/blob/master/Modules/RAM/readers.swift
+  static func appMemoryBytes(active: UInt64, inactive: UInt64, speculative: UInt64,
+    purgeable: UInt64, fileBacked: UInt64) -> UInt64 {
+    let pageable = active + inactive + speculative
+    let reclaimable = purgeable + fileBacked
+    return pageable > reclaimable ? pageable - reclaimable : 0
+  }
   public func sample(intervalMs: Int = 1_000) -> BasicSystemSample {
     var raw = cmm_system_sample()
     _ = cmm_read_system(&raw)
@@ -41,6 +51,13 @@ public final class BasicSystemCollector {
       ? 100
         * max(0, Double(raw.total_bytes) - Double(raw.free_bytes) - Double(raw.speculative_bytes))
         / Double(raw.total_bytes) : nil
+    let appMemory = raw.memory_error == 0 ? Self.appMemoryBytes(
+      active: raw.active_bytes, inactive: raw.inactive_bytes, speculative: raw.speculative_bytes,
+      purgeable: raw.purgeable_bytes, fileBacked: raw.file_backed_bytes) : nil
+    let appWired = appMemory.flatMap { app -> Double? in
+      guard raw.total_bytes > 0 else { return nil }
+      return min(100, 100 * (Double(app) + Double(raw.wired_bytes)) / Double(raw.total_bytes))
+    }
     return .init(
       sampledAt: now, monotonicNs: monotonic,
       cpu: Metric(
@@ -54,6 +71,11 @@ public final class BasicSystemCollector {
       inactiveBytes: raw.memory_error == 0 ? raw.inactive_bytes : nil,
       wiredBytes: raw.memory_error == 0 ? raw.wired_bytes : nil,
       compressorBytes: raw.memory_error == 0 ? raw.compressor_bytes : nil,
+      appMemoryBytes: appMemory,
+      appWiredPercent: Metric(
+        value: appWired, unit: "percent", status: appWired == nil ? .error : .ok,
+        source: "host_statistics64 App estimate + wired / hw.memsize (excludes compressed)",
+        sampledAt: now, intervalMs: intervalMs),
       nonIdlePercent: Metric(
         value: nonIdle, unit: "percent", status: raw.memory_error == 0 ? .ok : .error,
         source: "host_statistics64+hw.memsize", sampledAt: now, intervalMs: intervalMs),

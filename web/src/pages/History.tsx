@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useMetrics } from "../store/metrics";
 import { useI18n, errorMessage } from "../i18n";
 import { api, APIError } from "../store/api";
+import { sensorName, showSensor } from "../components/Temperatures";
 import { TimeSeries, type Point } from "../components/TimeSeries";
 export function History() {
   const { t, number } = useI18n(),
@@ -18,11 +19,11 @@ export function History() {
     requestRevision = useRef(0);
   const choices = [
     ["cpu.total", t("dashboard:cpu")],
-    ["memory.nonIdle", t("dashboard:memory")],
+    ["memory.nonIdle", t("dashboard:memoryNonIdle")],
     ["memory.swapUsedBytes", t("dashboard:swap")],
     ["gpu.total", t("dashboard:gpu")],
     ...["diskReadBytesPerSecond", "diskWriteBytesPerSecond", "networkReadBytesPerSecond", "networkWriteBytesPerSecond"].map(id => [id, t(("dashboard:" + id) as "dashboard:diskReadBytesPerSecond")]),
-    ...(snapshot.sensors ?? []).map((sensor: Record<string, any>) => [sensor.seriesId, t("dashboard:temperature") + " · " + sensor.label]).filter((entry: string[]) => entry[0]),
+    ...(snapshot.sensors ?? []).filter(showSensor).map((sensor: Record<string, any>) => [sensor.seriesId, t("dashboard:temperature") + " · " + sensorName(sensor as { id: string; label: string }, t)]).filter((entry: string[]) => entry[0]),
   ];
   currentEpoch.current = epoch;
   useEffect(() => {

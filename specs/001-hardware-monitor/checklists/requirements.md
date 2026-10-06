@@ -1,4 +1,4 @@
-# Specification Quality Checklist: Cloud Mac Monitor
+# Specification Quality Checklist: Mac Monitor
 
 **Purpose**: 检查最终历史、账户、多语言、React、安装和开源需求的一致性。
 **Updated**: 2026-10-01

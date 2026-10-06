@@ -37,7 +37,12 @@ interrupt.resume()
 let runtime: AgentRuntime
 do {
   runtime = try AgentRuntime(root: root, webRoot: web, requestExit: wake)
-  try runtime.start(port: Int(options["--port"] ?? "8765") ?? 8765)
+  let port: Int?
+  if let value = options["--port"] {
+    guard let parsed = Int(value), (0...65535).contains(parsed) else { throw APIError(400, "invalidPort") }
+    port = parsed
+  } else { port = nil }
+  try runtime.start(port: port)
 } catch {
   FileHandle.standardError.write(Data("MonitorAgent could not start: \(error)\n".utf8))
   exit((error as? APIError)?.code == "startupCircuitOpen" ? 0 : 78)

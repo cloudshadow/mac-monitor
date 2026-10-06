@@ -1,6 +1,8 @@
 # HTTP / SSE Contract v1
 
-历史、账户与设备配对契约已实现；首次开户流程按 2026-10-03 用户要求修订。默认本机`http://127.0.0.1:8765`、LAN `https://<Mac主机名或IP>:8766`；端口冲突自动选择可用端口，由受限本地控制通道取得实际地址并同步Host/Origin白名单。
+历史、账户与设备配对契约已实现；首次开户流程按 2026-10-03 用户要求修订。默认本机`http://127.0.0.1:8765`、LAN `https://<Mac主机名或IP>:8765`；本机端口冲突自动选择可用端口，LAN跟随本机实际端口，LAN绑定冲突则报告不可用，由受限本地控制通道取得实际地址并同步Host/Origin白名单。
+
+端口可在原生控制窗口设置（1–65535），经仅限服务所有者的 IPC `setPort` 命令提交，参数为整数 `port`。同时预绑定本机和可用 en0 地址，成功后保存 `settings.listenPort` 并替换监听；失败保留原监听和配置，错误码为 `invalidPort`、`localPortInUse`、`lanPortInUse` 或 `portBindFailed`。`status` 返回 `configuredPort`、`actualPort`、`portFallback`；启动遇到本机端口不可用可临时选端口，但必须在控制窗口提示配置值与实际值。CLI `--port` 可覆盖保存值，`0` 仅用于开发随机端口。
 
 ## 认证矩阵
 

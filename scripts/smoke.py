@@ -3,7 +3,7 @@
 import http.client,json,os,pathlib,socket,subprocess,tempfile,time,urllib.parse
 project=pathlib.Path(__file__).resolve().parent.parent
 with tempfile.TemporaryDirectory(prefix='cmm-smoke.',dir='/private/tmp') as data:
-    process=subprocess.Popen([str(project/'.build/debug/MonitorAgent'),'--data-root',data,'--web-root',str(project/'web/dist'),'--port','0'],stderr=subprocess.PIPE,text=True)
+    process=subprocess.Popen([os.environ.get('CMM_TEST_AGENT', str(project/'.build/debug/MonitorAgent')),'--data-root',data,'--web-root',str(project/'web/dist'),'--port','0'],stderr=subprocess.PIPE,text=True)
     try:
         ready=process.stderr.readline().strip()
         assert 'ready at http://' in ready,ready

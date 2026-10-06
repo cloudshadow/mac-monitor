@@ -12,7 +12,7 @@ public enum PrototypeAction: String, CaseIterable, Sendable {
 public enum PrototypePaths {
     public static let label = "org.cloudmacmonitor.probe"
     public static let job = "system/" + label
-    public static let app = "/Applications/Cloud Mac Monitor Probe.app"
+    public static let app = "/Applications/Mac Monitor Probe.app"
     public static let helper = app + "/Contents/MacOS/MaintenanceProbeHelper"
     public static let plist = "/Library/LaunchDaemons/" + label + ".plist"
     public static let root = "/Library/Application Support/CloudMacMonitorProbe"

@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "CloudMacMonitor",
+    name: "MacMonitor",
     platforms: [.macOS(.v14)],
     products: [
         .executable(name: "MonitorAgent", targets: ["MonitorAgent"]),

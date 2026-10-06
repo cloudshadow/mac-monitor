@@ -47,7 +47,7 @@ public final class MetricStore: @unchecked Sendable {
       }
       for field in [
         "physicalMemoryBytes", "freeBytes", "speculativeBytes", "activeBytes", "inactiveBytes",
-        "wiredBytes", "compressorBytes",
+        "wiredBytes", "compressorBytes", "appMemoryBytes",
       ] { if snapshot[field] == nil { snapshot[field] = .null } }
       snapshot["bootId"] = .string(bootId)
       snapshot["recordingEpoch"] = .string(history.epoch)

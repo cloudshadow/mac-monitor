@@ -7,6 +7,7 @@ typedef struct {
     uint64_t user_ticks, system_ticks, idle_ticks, nice_ticks;
     uint64_t total_bytes, free_bytes, speculative_bytes, active_bytes;
     uint64_t inactive_bytes, wired_bytes, compressor_bytes;
+    uint64_t purgeable_bytes, file_backed_bytes;
     uint64_t swap_used_bytes;
     int cpu_error, memory_error, swap_error;
 } cmm_system_sample;

@@ -3,7 +3,7 @@
 <plist version="1.0"><dict>
 <key>Label</key><string>org.cloudmacmonitor.agent</string>
 <key>UserName</key><string>__OWNER_NAME__</string>
-<key>ProgramArguments</key><array><string>/Library/Application Support/CloudMacMonitor/Cloud Mac Monitor.app/Contents/MacOS/MonitorAgent</string><string>--data-root</string><string>/Library/Application Support/CloudMacMonitor/data</string></array>
+<key>ProgramArguments</key><array><string>/Library/Application Support/CloudMacMonitor/Mac Monitor.app/Contents/MacOS/MonitorAgent</string><string>--data-root</string><string>/Library/Application Support/CloudMacMonitor/data</string></array>
 <key>RunAtLoad</key><true/>
 <key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>
 <key>ThrottleInterval</key><integer>30</integer>

@@ -114,7 +114,7 @@ export function Applications() {
       {cursor && appsSequence !== table.scanSequence && (
         <p>{t("apps:newScan")}</p>
       )}
-      <div className="table-scroll">
+      <div className="table-scroll" tabIndex={0} role="region" aria-label={t("common:apps")}>
         <table>
           <thead>
             <tr>

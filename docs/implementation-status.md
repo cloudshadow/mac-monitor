@@ -30,7 +30,7 @@
 
 ## 拿到真机后的顺序
 
-1. Apple Silicon 使用 `artifacts/CloudMacMonitor-0.1.1-arm64.tar.gz` 与对应 `.sha256`，按 README 的 `--local` 安装入口执行。正式公开版本下载仍需配置 ReleaseRepository；项目 LICENSE/版权主体尚待确定。
+1. Apple Silicon 使用 `artifacts/MacMonitor-0.1.1-arm64.tar.gz` 与对应 `.sha256`，按 README 的 `--local` 安装入口执行。正式公开版本下载仍需配置 ReleaseRepository；项目 LICENSE/版权主体尚待确定。
 2. 按 [install-validation.md](install-validation.md) 验证首次批准、普通 UID/system 域、管理员取消、无桌面/注销、升级启停保留、失败恢复及卸载。
 3. 按 [mobile-setup.md](mobile-setup.md) 导入 CA、配对/登录与撤销，核对 360px 界面、手机证书与网络切换。
 4. 按 [compatibility.md](compatibility.md) 对照 CPU/内存/应用和原始 sensor ID，建立机型温度/GPU 表。当前不把未验证传感器猜作 CPU 温度。
@@ -40,7 +40,7 @@
 
 ## v0.1.1 installation-path correction
 
-The v0.1.0 installer rejected the standard root:admin 775 `/Applications` directory before copying the app. v0.1.1 accepts this entry-point directory without chmod, stores the real bundle at `/Library/Application Support/CloudMacMonitor/Cloud Mac Monitor.app`, and creates a root-owned launcher symlink at `/Applications/Cloud Mac Monitor.app`. Both launchd and the fixed administrator tool execute from the protected bundle, not through the public link. The link is replaced using atomic rename and never follows or deletes an unrelated destination. Account/history/TLS data locations are unchanged.
+The v0.1.0 installer rejected the standard root:admin 775 `/Applications` directory before copying the app. v0.1.1 accepts this entry-point directory without chmod, stores the real bundle at `/Library/Application Support/CloudMacMonitor/Mac Monitor.app`, and creates a root-owned launcher symlink at `/Applications/Mac Monitor.app`. Both launchd and the fixed administrator tool execute from the protected bundle, not through the public link. The link is replaced using atomic rename and never follows or deletes an unrelated destination. Account/history/TLS data locations are unchanged.
 
 Four installation regression tests cover the default directory policy, managed link replacement/removal, unrelated directory/link preservation, and interrupted staging-link recovery. Live administrator installation and launchd registration remain target-machine acceptance tests. A legacy v0.1.0 real bundle can migrate only while its complete original code path is protected; an unsafe or unmanaged legacy entry is refused without executing its helper.
 
@@ -77,7 +77,7 @@ Native version/build and packaged web version are visible. Package version overr
 Uninstall without data deletion leaves installation.json and disables the system job while removing the app. The old installer treated any retained record as an upgrade and tried to execute the missing old MonitorMaintenance binary. Reinstall now validates the same service owner and saved-data permissions, disables/bootouts a stale loaded job without executing missing code, and installs/starts the verified app while preserving data. Healthy upgrades still use the protected old helper; partial apps and dangling app links remain refused. Six temporary-path installer regression cases cover missing app, stale loaded job, healthy upgrade, partial app, dangling link, and unsafe data. The tests execute the real shell decision block and stub privilege checks/launchctl; installed system-domain operation remains a target-Mac check.
 
 
-## v0.1.7 automatic LAN and independent service controls
+## v0.1.8 automatic LAN and independent service controls
 
 The Agent automatically serves HTTPS on en0's active IPv4 address, before account setup; remote setup remains forbidden. It retries network availability and certificate renewal, ignores retired manual LAN settings, and never selects another interface. Pairing/device routes, IPC commands and native/web flows are removed. Clients use the existing account/password; local and LAN sessions remain isolated, and password changes revoke sessions and streams. Existing state schema tables are retained for upgrade compatibility; no account/history/CA data is deleted.
 

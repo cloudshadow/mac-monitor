@@ -37,4 +37,14 @@ enum NativeKeys {
     static func lanUnavailable(code: String) -> String { NativeLocalization.text("lanUnavailable", parameters: ["code": code]) }
     static func certificate(path: String) -> String { NativeLocalization.text("certificate", parameters: ["path": path]) }
     static func checking() -> String { NativeLocalization.text("checking", parameters: [:]) }
+    static func upToDate() -> String { NativeLocalization.text("upToDate", parameters: [:]) }
+    static func updateFailed(reason: String) -> String { NativeLocalization.text("updateFailed", parameters: ["reason": reason]) }
+    static func port() -> String { NativeLocalization.text("port", parameters: [:]) }
+    static func applyPort() -> String { NativeLocalization.text("applyPort", parameters: [:]) }
+    static func portHelp() -> String { NativeLocalization.text("portHelp", parameters: [:]) }
+    static func invalidPort() -> String { NativeLocalization.text("invalidPort", parameters: [:]) }
+    static func localPortInUse(port: String) -> String { NativeLocalization.text("localPortInUse", parameters: ["port": port]) }
+    static func lanPortInUse(port: String) -> String { NativeLocalization.text("lanPortInUse", parameters: ["port": port]) }
+    static func portBindFailed(port: String) -> String { NativeLocalization.text("portBindFailed", parameters: ["port": port]) }
+    static func portFallback(actual: String, configured: String) -> String { NativeLocalization.text("portFallback", parameters: ["actual": actual, "configured": configured]) }
 }

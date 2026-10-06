@@ -16,6 +16,54 @@ import Testing
     while model.busy && Date() < deadline { try await Task.sleep(for: .milliseconds(20)) }
     #expect(!model.busy)
   }
+  @Test func automaticRefreshDoesNotDisableControlsOrClearActionErrors() async throws {
+    let (root, path) = try fixture()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let response = JSONValue.object(["address": .string("http://127.0.0.1:8765")])
+    let server = try LocalControlServer(path: path, ownerUid: getuid()) { _, _ in response }
+    server.start()
+    defer { server.stop() }
+    let model = ControlModel(socketPath: path, ownerUid: getuid())
+    model.error = "Previous action failed"
+    model.refresh(silently: true)
+    #expect(!model.busy)
+    let deadline = Date().addingTimeInterval(8)
+    while model.status == .null && Date() < deadline { try await Task.sleep(for: .milliseconds(20)) }
+    #expect(model.status == response)
+    #expect(!model.busy)
+    #expect(model.error == "Previous action failed")
+  }
+  @Test func updateSelectionIncludesPrereleasesAndComparesVersionsNumerically() {
+    #expect(UpdateCoordinator.newestTag(in: [
+      ["tag_name": "v0.1.9", "prerelease": false],
+      ["tag_name": "v0.1.10", "prerelease": true],
+      ["tag_name": "v9.0.0", "draft": true],
+      ["tag_name": "v0.2.0;bad"],
+    ]) == "v0.1.10")
+    #expect(!UpdateCoordinator.isNewer("0.1.10", than: "0.1.10"))
+    #expect(!UpdateCoordinator.isNewer("0.1.9", than: "0.1.10"))
+    #expect(UpdateCoordinator.isNewer("0.1.10", than: "0.1.9"))
+  }
+  @Test func portInputRejectsInvalidValuesAndDisplaysConflictReason() async throws {
+    let (root, path) = try fixture()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let model = ControlModel(socketPath: path, ownerUid: getuid())
+    for input in ["", "0", "65536", "1.5", "abc"] {
+      model.configurePort(input)
+      #expect(!model.busy)
+      #expect(model.error == NativeKeys.invalidPort())
+    }
+    let server = try LocalControlServer(path: path, ownerUid: getuid()) { request, _ in
+      #expect(request["command"].string == "setPort")
+      #expect(request["port"].number == 9000)
+      throw APIError(409, "localPortInUse")
+    }
+    server.start()
+    defer { server.stop() }
+    model.configurePort("9000")
+    try await idle(model)
+    #expect(model.error == NativeKeys.localPortInUse(port: "9000"))
+  }
   @Test func statusFailureClearsStaleAddressAndShowsReason() async throws {
     let (root, path) = try fixture()
     defer { try? FileManager.default.removeItem(at: root) }

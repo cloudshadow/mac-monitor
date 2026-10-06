@@ -1,5 +1,5 @@
 {
-  "title": "Cloud Mac Monitor",
+  "title": "Mac Monitor",
   "open": "開啟監測頁面",
   "setup": "建立帳戶",
   "refresh": "重新整理狀態",
@@ -34,5 +34,15 @@
   "browserFailed": "無法開啟瀏覽器，請將監控地址複製到瀏覽器。",
   "lanUnavailable": "en0 區域網路暫時無法使用（{code}），本機監控仍可使用。",
   "certificate": "HTTPS CA 憑證：{path}",
-  "checking": "正在檢查狀態…"
+  "checking": "正在檢查狀態…",
+  "upToDate": "目前已是最新版本。",
+  "updateFailed": "檢查更新失敗：{reason}",
+  "port": "監測連接埠",
+  "applyPort": "套用連接埠",
+  "portHelp": "本機 HTTP 與區域網路 HTTPS 共用連接埠（1–65535）。修改後立即生效並儲存，下次啟動沿用。修改後請重新開啟監測頁面。",
+  "invalidPort": "請輸入 1 到 65535 之間的整數連接埠號碼。",
+  "localPortInUse": "本機連接埠 {port} 已被占用，請選擇其他連接埠；目前設定維持生效。",
+  "lanPortInUse": "區域網路連接埠 {port} 已被占用，請選擇其他連接埠；本機監控仍可使用。",
+  "portBindFailed": "無法監聽連接埠 {port}，請檢查權限或選擇其他連接埠；目前設定維持生效。",
+  "portFallback": "設定的本機連接埠 {configured} 無法使用，暫時使用 {actual}；請選擇可用連接埠並套用。"
 }

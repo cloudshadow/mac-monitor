@@ -6,7 +6,7 @@ if [ "$EUID" -ne 0 ] || [ -z "${SUDO_UID:-}" ] || [ "$SUDO_UID" -eq 0 ]; then
   exit 1
 fi
 if [ "$#" -ne 1 ]; then
-  printf '%s\n' 'Usage: sudo bash scripts/install-maintenance-probe.sh "/absolute/path/Cloud Mac Monitor Probe.app"' >&2
+  printf '%s\n' 'Usage: sudo bash scripts/install-maintenance-probe.sh "/absolute/path/Mac Monitor Probe.app"' >&2
   exit 1
 fi
 probe_source="$1"
@@ -15,7 +15,7 @@ probe_owner=$(/usr/bin/id -nu "$SUDO_UID")
 case "$probe_owner" in ''|*[!a-zA-Z0-9._-]*) printf '%s\n' 'Unsupported local account name.' >&2; exit 1 ;; esac
 probe_guid=$(/usr/bin/dscl . -read "/Users/$probe_owner" GeneratedUID | /usr/bin/awk '{print $2}')
 if [ -z "$probe_guid" ]; then printf '%s\n' 'Local account identity could not be verified.' >&2; exit 1; fi
-probe_app='/Applications/Cloud Mac Monitor Probe.app'
+probe_app='/Applications/Mac Monitor Probe.app'
 probe_root='/Library/Application Support/CloudMacMonitorProbe'
 probe_plist='/Library/LaunchDaemons/org.cloudmacmonitor.probe.plist'
 if [ -e "$probe_app" ] || [ -L "$probe_app" ] || [ -e "$probe_root" ] || [ -L "$probe_root" ] || [ -e "$probe_plist" ] || [ -L "$probe_plist" ]; then
@@ -55,7 +55,7 @@ done
 <key>Label</key><string>org.cloudmacmonitor.probe</string>
 <key>UserName</key><string>$probe_owner</string>
 <key>ProgramArguments</key><array>
-<string>/Applications/Cloud Mac Monitor Probe.app/Contents/MacOS/Benchmark</string>
+<string>/Applications/Mac Monitor Probe.app/Contents/MacOS/Benchmark</string>
 <string>--duration</string><string>86400</string>
 <string>--warmup</string><string>300</string>
 <string>--database</string><string>/Library/Application Support/CloudMacMonitorProbe/data/probe.sqlite</string>

@@ -4,7 +4,7 @@
 
 ## 用户安装流程
 
-复制执行公开的一行安装命令 → 自动下载/校验预编译包 → 经管理员授权安装到 `/Applications/Cloud Mac Monitor.app` → 完成可能的系统首次批准 → 创建账户 → 自动进入本机网页。当前命令尚未实现/发布，流程详见 [free-command-install.md](free-command-install.md)。
+复制执行公开的一行安装命令 → 自动下载/校验预编译包 → 经管理员授权安装到 `/Applications/Mac Monitor.app` → 完成可能的系统首次批准 → 创建账户 → 自动进入本机网页。当前命令尚未实现/发布，流程详见 [free-command-install.md](free-command-install.md)。
 
 首版发布版本化归档包、安装器及校验清单；安装器在写入系统目录及注册LaunchDaemon时请求管理员授权（终端流程使用sudo）。提供一个 Apple Silicon arm64 版本，程序启动时识别具体芯片与传感器能力。应用包内含编译后的采集服务、原生控制端、静态网页、三种语言资源及必需动态库；用户不安装 Node、Swift 工具链、Homebrew、数据库或 Docker。
 
@@ -23,7 +23,7 @@
 
 本机优先使用8765，被占用时由系统分配可用端口，由控制端取得实际地址并打开浏览器，不要求普通用户修改配置。服务身份通过绑定的服务所有者UID、根保护安装路径及受限本地控制通道确认，不把占据同一端口的陌生服务当成已运行实例。端口改动会改变浏览器 origin，允许要求重新登录，账户仍保存。
 
-用户开启 LAN 时优先8766，冲突自动选择端口并同步地址/二维码；主机名或IP变化同样同步引导。LAN 仅在账户设置完成后可开启。后台任务位于system域，以指定普通服务所有者UID运行，与桌面登录无关；数据和TLS秘密位于系统专用目录，管理员授权的本机工具负责开机启动开关，关闭后不得在下次开机/升级偷偷重新启用。系统拒绝或要求批准时显示实际原因和对应操作入口；首版固定system plist方案不冒用SMAppService登录项状态。图形管理经NSAppleScript管理员授权调用固定维护工具，G4提前实测，详见 [launchdaemon.md](launchdaemon.md)。
+LAN与本机使用相同的实际端口（默认8765），在独立IP上绑定HTTPS；LAN端口冲突时报告不可用，本机服务继续运行；主机名或IP变化同样同步引导。LAN 仅在账户设置完成后可开启。后台任务位于system域，以指定普通服务所有者UID运行，与桌面登录无关；数据和TLS秘密位于系统专用目录，管理员授权的本机工具负责开机启动开关，关闭后不得在下次开机/升级偷偷重新启用。系统拒绝或要求批准时显示实际原因和对应操作入口；首版固定system plist方案不冒用SMAppService登录项状态。图形管理经NSAppleScript管理员授权调用固定维护工具，G4提前实测，详见 [launchdaemon.md](launchdaemon.md)。
 
 默认本机监测不请求完整磁盘访问、辅助功能或常驻 root 服务；传感器能力不足按 spec 降级。企业策略、安装目录权限及系统网络权限可能要求用户确认，不能承诺所有 Mac 零提示安装。应用和任务使用系统目录及根保护所有权，纳入安装/升级验证。
 
@@ -93,4 +93,4 @@ React、TypeScript、Vite只参与前端开发/构建，生产静态资源随应
 
 历史管理语义见 [history-storage.md](history-storage.md)：暂停保存仍保留近期实时曲线，恢复不补写；清空同时清除已保存历史、近期曲线及待写队列，保留当前实时值和暂停设置。控制端清空确认文字必须表达该范围，不能让用户误以为只删SQLite文件。
 
-2026-10-03 安装路径修正：/Applications/Cloud Mac Monitor.app 为图形入口链接；实际代码位于 /Library/Application Support/CloudMacMonitor/Cloud Mac Monitor.app。默认 root:admin 775 的 /Applications 不修改权限，服务与固定管理员工具直接执行受保护路径。
+2026-10-03 安装路径修正：/Applications/Mac Monitor.app 为图形入口链接；实际代码位于 /Library/Application Support/CloudMacMonitor/Mac Monitor.app。默认 root:admin 775 的 /Applications 不修改权限，服务与固定管理员工具直接执行受保护路径。

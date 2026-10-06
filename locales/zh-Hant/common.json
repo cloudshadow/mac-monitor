@@ -1,5 +1,5 @@
 {
-  "title": "Cloud Mac Monitor",
+  "title": "Mac Monitor",
   "overview": "概覽",
   "apps": "應用",
   "history": "歷史",
@@ -17,5 +17,6 @@
   "warmingUp": "正在建立基準",
   "unsupported": "不支援",
   "permissionDenied": "權限不足",
-  "powerOrThermalConstraint": "因電源或溫度狀態降低取樣頻率"
+  "powerOrThermalConstraint": "因電源或溫度狀態降低取樣頻率",
+  "online": "線上"
 }

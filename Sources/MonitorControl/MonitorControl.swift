@@ -15,6 +15,9 @@ import SwiftUI
   @Published var error = ""
   @Published var busy = false
   @Published var update: AvailableUpdate?
+  @Published var updateStatus = ""
+  private var refreshing = false
+  private var controlRevision = 0
   var reportShutdownFailure: (String) -> Void = { message in
     let alert = NSAlert()
     alert.messageText = NativeKeys.title()
@@ -50,6 +53,7 @@ import SwiftUI
     onFailure: ((any Error) -> Void)? = nil, then: ((JSONValue) -> Void)? = nil
   ) {
     guard !busy else { return }
+    controlRevision += 1
     busy = true
     error = ""
     let path = socketPath
@@ -124,8 +128,8 @@ import SwiftUI
           return try ServiceState.inspect(config: config)
         }.value
         guard revision == serviceRevision else { return }
-        serviceStatus = value
-        serviceError = ""
+        if serviceStatus != value { serviceStatus = value }
+        if !serviceError.isEmpty { serviceError = "" }
       } catch {
         guard revision == serviceRevision else { return }
         serviceStatus = .null
@@ -133,9 +137,47 @@ import SwiftUI
       }
     }
   }
-  func refresh() {
+  func refresh(silently: Bool = false) {
+    guard silently else {
+      refreshServiceState()
+      send("status", then: { self.status = $0 })
+      return
+    }
+    guard !busy, !refreshing else { return }
     refreshServiceState()
-    send("status", then: { self.status = $0 })
+    refreshing = true
+    let revision = controlRevision
+    let path = socketPath, uid = owner
+    Task {
+      defer { refreshing = false }
+      do {
+        let result = try await Task.detached {
+          try LocalControl.request(path: path, ownerUid: uid, body: .object(["command": .string("status")]))
+        }.value
+        guard !busy, revision == controlRevision else { return }
+        if status != result { status = result }
+      } catch {
+        guard !busy, revision == controlRevision else { return }
+        if status != .null { status = .null }
+        self.error = NativeKeys.serviceUnavailable(code: Self.code(error))
+      }
+    }
+  }
+  func configurePort(_ input: String) {
+    let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let port = Int(text), (1...65535).contains(port) else {
+      error = NativeKeys.invalidPort()
+      return
+    }
+    send("setPort", arguments: ["port": .number(Double(port))], onFailure: { error in
+      switch Self.code(error) {
+      case "localPortInUse": self.error = NativeKeys.localPortInUse(port: String(port))
+      case "lanPortInUse": self.error = NativeKeys.lanPortInUse(port: String(port))
+      case "portBindFailed": self.error = NativeKeys.portBindFailed(port: String(port))
+      case "invalidPort": self.error = NativeKeys.invalidPort()
+      default: break
+      }
+    }, then: { self.status = $0 })
   }
   func openMonitor() {
     // Re-read the address: it may be missing or stale after stopping/restarting.
@@ -159,7 +201,15 @@ import SwiftUI
     guard !busy else { return }
     busy = true
     Task {
-      do { update = try await UpdateCoordinator.check() } catch { self.error = NativeKeys.error() }
+      error = ""
+      update = nil
+      updateStatus = ""
+      do {
+        update = try await UpdateCoordinator.check()
+        if update == nil { updateStatus = NativeKeys.upToDate() }
+      } catch {
+        self.error = NativeKeys.updateFailed(reason: error.localizedDescription)
+      }
       busy = false
     }
   }
@@ -169,6 +219,7 @@ import SwiftUI
         action), !busy
     else { return }
     serviceRevision += 1
+    controlRevision += 1
     let app = InstallationLayout.maintenance
     let script = "do shell script \"'\(app)' '\(action)' || true\" with administrator privileges"
     busy = true
@@ -237,13 +288,14 @@ import SwiftUI
 @main struct MonitorControlApp: App {
   @NSApplicationDelegateAdaptor(ControlAppDelegate.self) private var delegate
   var body: some Scene {
-    WindowGroup("Cloud Mac Monitor") { ControlView() }.windowResizability(.contentSize)
+    WindowGroup("Mac Monitor") { ControlView() }.windowResizability(.contentSize)
   }
 }
 struct ControlView: View {
   @StateObject private var model = ControlModel()
   @AppStorage("language") private var language = "en"
   @State private var password = ""
+  @State private var port = "8765"
   @State private var showClear = false
   @State private var showUninstall = false
   @State private var showRecovery = false
@@ -256,6 +308,10 @@ struct ControlView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
       HStack {
+        if let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
+          let logo = NSImage(contentsOf: url) {
+          Image(nsImage: logo).resizable().scaledToFit().frame(width: 44, height: 44)
+        }
         VStack(alignment: .leading, spacing: 4) {
           Text(NativeKeys.title()).font(.title2)
           Text(NativeKeys.version(
@@ -277,6 +333,20 @@ struct ControlView: View {
         Button(NativeKeys.open()) { model.openMonitor() }
       }
       Text(NativeKeys.refreshHelp()).font(.caption).foregroundStyle(.secondary)
+      HStack {
+        Text(NativeKeys.port())
+        TextField(NativeKeys.port(), text: $port).frame(width: 90)
+          .textFieldStyle(.roundedBorder)
+        Button(NativeKeys.applyPort()) { model.configurePort(port) }
+          .disabled(model.status == .null)
+      }
+      Text(NativeKeys.portHelp()).font(.caption).foregroundStyle(.secondary)
+      if model.status["portFallback"].bool == true {
+        Text(NativeKeys.portFallback(
+          actual: String(Int(model.status["actualPort"].number ?? 0)),
+          configured: String(Int(model.status["configuredPort"].number ?? 8765))
+        )).font(.caption).foregroundStyle(.orange)
+      }
       if model.status["recoveryRequired"].bool == true {
         Button(NativeKeys.recover()) { showRecovery = true }
       }
@@ -306,7 +376,9 @@ struct ControlView: View {
           Text(NativeKeys.certificate(path: certificate)).font(.caption).textSelection(.enabled)
         }
       } else {
-        Text(NativeKeys.lanUnavailable(code: model.status["lanError"].string ?? "networkUnavailable"))
+        Text(model.status["lanError"].string == "lanPortInUse"
+          ? NativeKeys.lanPortInUse(port: String(Int(model.status["actualPort"].number ?? 8765)))
+          : NativeKeys.lanUnavailable(code: model.status["lanError"].string ?? "networkUnavailable"))
           .font(.caption).foregroundStyle(.secondary)
       }
       Divider()
@@ -332,17 +404,21 @@ struct ControlView: View {
           }
         }
       }
+      if !model.updateStatus.isEmpty { Text(model.updateStatus).font(.caption) }
       Text(NativeKeys.background()).font(.caption).foregroundStyle(.secondary)
       Toggle(NativeKeys.deleteData(), isOn: $deleteData)
       Button(NativeKeys.uninstall(), role: .destructive) { showUninstall = true }
       if !model.error.isEmpty { Text(model.error).foregroundStyle(.red) }
       if model.busy { ProgressView() }
     }.padding(24).frame(width: 640).disabled(model.busy)
+      .onChange(of: model.status["configuredPort"].number, initial: true) { _, value in
+        if let value, value > 0 { port = String(Int(value)) }
+      }
       .task {
         model.refresh()
         while !Task.isCancelled {
           do { try await Task.sleep(for: .seconds(5)) } catch { return }
-          model.refresh()
+          model.refresh(silently: true)
         }
       }
       .alert(NativeKeys.recover(), isPresented: $showRecovery) {

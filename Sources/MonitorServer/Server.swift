@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import HistoryStore
 import MonitorCore
@@ -74,7 +75,7 @@ public final class MonitorHTTPServer: @unchecked Sendable {
   }
   public func start(
     host: String = "127.0.0.1", port: Int = 8765, certificate: String? = nil,
-    privateKey: String? = nil, beforeBind: (@Sendable () -> Void)? = nil
+    privateKey: String? = nil, allowPortFallback: Bool = true, beforeBind: (@Sendable () -> Void)? = nil
   ) throws -> Int {
     var ssl: NIOSSLContext?
     if let certificate, let privateKey {
@@ -89,7 +90,9 @@ public final class MonitorHTTPServer: @unchecked Sendable {
     let tls = ssl
     let server = self
     func bindPort(_ requested: Int) throws -> any Channel {
-      try ServerBootstrap(group: group).serverChannelOption(ChannelOptions.backlog, value: 16)
+      try ServerBootstrap(group: group)
+        .serverChannelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
+        .serverChannelOption(ChannelOptions.backlog, value: 16)
         .childChannelOption(
           ChannelOptions.writeBufferWaterMark,
           value: ChannelOptions.Types.WriteBufferWaterMark(low: 32768, high: 65536)
@@ -127,7 +130,12 @@ public final class MonitorHTTPServer: @unchecked Sendable {
     }
     let channel: any Channel
     do { channel = try bindPort(port) } catch {
-      if port == 0 { throw error }
+      if port == 0 || !allowPortFallback {
+        if let io = error as? IOError, io.errnoCode == EADDRINUSE {
+          throw APIError(409, "portInUse")
+        }
+        throw error
+      }
       channel = try bindPort(0)
     }
     channels.withLock { $0.append(channel) }

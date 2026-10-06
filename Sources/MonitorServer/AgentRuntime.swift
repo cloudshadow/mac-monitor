@@ -6,8 +6,8 @@ import MonitorCore
 import MonitorIPC
 
 public final class AgentRuntime: @unchecked Sendable {
-  public let state: StateStore, history: HistoryDatabase, auth: AuthService, metrics: MetricStore,
-    server: MonitorHTTPServer
+  public let state: StateStore, history: HistoryDatabase, auth: AuthService, metrics: MetricStore
+  public private(set) var server: MonitorHTTPServer
   private var scheduler: Scheduler!, control: LocalControlServer?
   private let lockFd: Int32, root: String, webRootForLAN: String
   private let requestExit: @Sendable () -> Void
@@ -21,6 +21,7 @@ public final class AgentRuntime: @unchecked Sendable {
   private var certificateCheckAt = Date.distantPast
   private let lifecycleQueue = DispatchQueue(label: "org.cloudmacmonitor.lifecycle")
   public private(set) var address = ""
+  private var configuredPort = 8765
   public init(root: String, webRoot: String, requestExit: @escaping @Sendable () -> Void = {}) throws {
     self.requestExit = requestExit
     guard geteuid() != 0 else { throw APIError(403, "ordinaryOwnerRequired") }
@@ -77,9 +78,13 @@ public final class AgentRuntime: @unchecked Sendable {
     guard info.st_mode & S_IFMT == S_IFDIR, info.st_uid == geteuid(), info.st_mode & 0o077 == 0
     else { throw APIError(503, "unsafeDataPath") }
   }
-  public func start(port: Int = 8765) throws {
+  public func start(port: Int? = nil) throws {
+    let saved = (try? state.setting("listenPort")).flatMap { Int($0) }
+    let preferred = port ?? saved.flatMap { (1...65535).contains($0) ? $0 : nil } ?? 8765
+    guard (0...65535).contains(preferred) else { throw APIError(400, "invalidPort") }
+    configuredPort = preferred
     _ = nice(10)
-    address = "http://127.0.0.1:\(try server.start(port: port))"
+    address = "http://127.0.0.1:\(try server.start(port: preferred))"
     control = try LocalControlServer(path: root + "/run/control.sock", ownerUid: geteuid()) {
       [weak self] request, _ in
       guard let self else { throw APIError(503, "serviceUnavailable") }
@@ -123,19 +128,16 @@ public final class AgentRuntime: @unchecked Sendable {
   public func command(_ request: JSONValue) async throws -> JSONValue {
     switch request["command"].string {
     case "status":
-      return .object([
-        "address": .string(address), "ownerUid": .number(Double(geteuid())),
-        "recoveryRequired": .bool(state.recoveryRequired), "history": history.status(),
-        "readyToStop": .bool(stopping.withLock { $0 }),
-        "lanAddress": .string(lan.withLock { $0.address }),
-        "lanInterface": .string(Self.lanInterface),
-        "lanError": .string(lan.withLock { $0.error }),
-        "caCertificate": .string(root + "/secrets/ca.pem"),
-        "interfaces": .array(
-          LanNetwork.interfaces().map {
-            .object(["name": .string($0.name), "address": .string($0.address)])
-          }),
-      ])
+      return lifecycleQueue.sync { statusSnapshot() }
+    case "setPort":
+      guard let number = request["port"].number, number.isFinite,
+        number.rounded() == number, (1...65535).contains(number)
+      else { throw APIError(400, "invalidPort") }
+      return try lifecycleQueue.sync {
+        guard !stopping.withLock({ $0 }) else { throw APIError(503, "serviceUnavailable") }
+        try configurePort(Int(number))
+        return statusSnapshot()
+      }
     case "setup":
       return .object(["url": .string(address + "/#setup=" + (try auth.issueSetupTicket()))])
     case "recoverState":
@@ -156,14 +158,87 @@ public final class AgentRuntime: @unchecked Sendable {
     case "prepareStop":
       stopping.withLock { $0 = true }
       scheduler.stop()
-      server.stopListeners()
-      lifecycleQueue.sync { lanServer?.stopListeners() }
+      lifecycleQueue.sync {
+        server.stopListeners()
+        lanServer?.stopListeners()
+      }
       try await history.prepareStop()
       StartupGuard.stable(root: root)
       stopping.withLock { $0 = true }
       return .object(["ready": .bool(true)])
     default: throw APIError(400, "invalidCommand")
     }
+  }
+  private func statusSnapshot() -> JSONValue {
+    let actualPort = URLComponents(string: address)?.port ?? 0
+    return .object([
+      "address": .string(address), "ownerUid": .number(Double(geteuid())),
+      "configuredPort": .number(Double(configuredPort)),
+      "actualPort": .number(Double(actualPort)),
+      "portFallback": .bool(configuredPort != 0 && actualPort != configuredPort),
+      "recoveryRequired": .bool(state.recoveryRequired), "history": history.status(),
+      "readyToStop": .bool(stopping.withLock { $0 }),
+      "lanAddress": .string(lan.withLock { $0.address }),
+      "lanInterface": .string(Self.lanInterface),
+      "lanError": .string(lan.withLock { $0.error }),
+      "caCertificate": .string(root + "/secrets/ca.pem"),
+      "interfaces": .array(LanNetwork.interfaces().map {
+        .object(["name": .string($0.name), "address": .string($0.address)])
+      }),
+    ])
+  }
+  /// Bind both new listeners before committing, so a rejected change keeps the current addresses.
+  private func configurePort(_ port: Int) throws {
+    let currentPort = URLComponents(string: address)?.port
+    if currentPort == port {
+      try state.set("listenPort", String(port))
+      configuredPort = port
+      reconcileLAN()
+      return
+    }
+    let replacement = MonitorHTTPServer(
+      auth: auth, metrics: metrics, history: history, webRoot: webRootForLAN,
+      viewers: server.viewers, budget: server.budget, queryLimits: server.queryLimits)
+    var replacementLAN: MonitorHTTPServer?
+    var committed = false
+    defer {
+      if !committed {
+        replacement.shutdown()
+        replacementLAN?.shutdown()
+      }
+    }
+    do { _ = try replacement.start(port: port, allowPortFallback: false) }
+    catch {
+      if (error as? APIError)?.code == "portInUse" { throw APIError(409, "localPortInUse") }
+      throw APIError(503, "portBindFailed")
+    }
+    var lanAddress = ""
+    if let chosen = LanNetwork.defaultInterface(in: LanNetwork.interfaces()) {
+      let identity = try TLSIdentity(directory: root + "/secrets", address: chosen.address)
+      let listener = MonitorHTTPServer(
+        auth: auth, metrics: metrics, history: history, webRoot: webRootForLAN,
+        viewers: server.viewers, budget: server.budget, queryLimits: server.queryLimits)
+      replacementLAN = listener
+      do {
+        _ = try listener.start(host: chosen.address, port: port, certificate: identity.certificate,
+          privateKey: identity.privateKey, allowPortFallback: false)
+      } catch {
+        if (error as? APIError)?.code == "portInUse" { throw APIError(409, "lanPortInUse") }
+        throw APIError(503, "portBindFailed")
+      }
+      lanAddress = "https://\(chosen.address):\(port)"
+    }
+    try state.set("listenPort", String(port))
+    let previous = server, previousLAN = lanServer
+    server = replacement
+    lanServer = replacementLAN
+    configuredPort = port
+    address = "http://127.0.0.1:\(port)"
+    lan.withLock { $0 = (lanAddress, lanAddress.isEmpty ? "networkUnavailable" : "") }
+    certificateCheckAt = Date()
+    committed = true
+    previous.shutdown()
+    previousLAN?.shutdown()
   }
   private func applyPowerPolicy() {
     scheduler.configure(
@@ -190,7 +265,8 @@ public final class AgentRuntime: @unchecked Sendable {
       || Date().timeIntervalSince(certificateCheckAt) >= 86400
     {
       do { try awaitlessEnableLAN(interface: interface) } catch {
-        lan.withLock { $0.error = (error as? APIError)?.code ?? "tlsUnavailable" }
+        lan.withLock { $0.error = (error as? APIError)?.code == "portInUse"
+          ? "lanPortInUse" : (error as? APIError)?.code ?? "tlsUnavailable" }
       }
     }
   }
@@ -202,12 +278,12 @@ public final class AgentRuntime: @unchecked Sendable {
       auth: auth, metrics: metrics, history: history, webRoot: webRootForLAN,
       viewers: server.viewers, budget: server.budget, queryLimits: server.queryLimits)
     let previous = lanServer
-    let preferredPort = URLComponents(string: lan.withLock { $0.address })?.port ?? 8766
+    let preferredPort = URLComponents(string: address)?.port ?? 8765
     let port: Int
     do {
       port = try listener.start(
         host: chosen.address, port: preferredPort, certificate: identity.certificate,
-        privateKey: identity.privateKey, beforeBind: { previous?.shutdown() })
+        privateKey: identity.privateKey, allowPortFallback: false, beforeBind: { previous?.shutdown() })
     } catch {
       listener.shutdown()
       lanServer = nil
@@ -224,8 +300,8 @@ public final class AgentRuntime: @unchecked Sendable {
     for observer in powerObservers { NotificationCenter.default.removeObserver(observer) }
     scheduler.stop()
     control?.stop()
-    server.shutdown()
     lifecycleQueue.sync {
+      server.shutdown()
       lanServer?.shutdown()
       lanServer = nil
     }

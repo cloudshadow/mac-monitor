@@ -1,4 +1,4 @@
-# Tasks: Cloud Mac Monitor
+# Tasks: Mac Monitor
 
 **Input**: spec、plan、research、data-model、contracts、history-storage、installation-and-storage、signing-and-open-source、localization、realtime-data-flow、free-command-install、launchdaemon。
 **Status**: 2026-10-03 已完成软件实现及开发机自动检查；真机验收按用户要求延后。`[P]`表示依赖完成后可并行处理的独立文件；实测门槛未通过的任务仍保留未勾选。

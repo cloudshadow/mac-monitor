@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Automatic en0 TLS and password-only LAN integration; no trust-store changes."""
-import http.client,json,pathlib,socket,ssl,subprocess,tempfile,time,urllib.parse
+import http.client,json,os,pathlib,socket,ssl,subprocess,tempfile,time,urllib.parse
 project=pathlib.Path(__file__).resolve().parent.parent
 with tempfile.TemporaryDirectory(prefix='cmm-lan.',dir='/private/tmp') as root:
- p=subprocess.Popen([str(project/'.build/debug/MonitorAgent'),'--data-root',root,'--web-root',str(project/'web/dist'),'--port','0'],stderr=subprocess.PIPE,text=True)
+ p=subprocess.Popen([os.environ.get('CMM_TEST_AGENT', str(project/'.build/debug/MonitorAgent')),'--data-root',root,'--web-root',str(project/'web/dist'),'--port','0'],stderr=subprocess.PIPE,text=True)
  streams=[]
  try:
   ready=p.stderr.readline();assert 'ready at ' in ready,ready
@@ -27,6 +27,7 @@ with tempfile.TemporaryDirectory(prefix='cmm-lan.',dir='/private/tmp') as root:
     time.sleep(.1);status=control('status')
    lan=status['lanAddress'];assert lan,status
    address=urllib.parse.urlsplit(lan)
+   assert address.port==port,(local,lan)
    assert address.hostname==next(i['address'] for i in status['interfaces'] if i['name']=='en0')
    context=ssl.create_default_context(cafile=root+'/secrets/ca.pem');cookies={};csrf=''
    def request(route,method='GET',body=None,expected=200):
