@@ -1,14 +1,23 @@
 # Mac Monitor
 
-A native monitoring service and static React web interface for macOS 14+, implemented from the [feature specification](specs/001-hardware-monitor/spec.md). It includes account authentication, CPU/memory/disk/network monitoring, application rankings, persistent history, automatic en0 LAN access with HTTPS and account login, and local service management. The installed app does not require Node, Homebrew, or a separate SQLite service.
+A lightweight macOS monitoring app with a native controller and a responsive web dashboard.
 
-The software implementation and development-machine checks are complete. Apple Silicon system-domain operation, mobile access, administrator authorization, sensor compatibility, and long-running performance still require hardware acceptance testing. The current release is a prerelease for that testing, not a claim that all release gates have passed.
+- Monitor CPU, GPU, memory, temperatures, disk and network activity.
+- View application resource rankings and historical data.
+- Access the dashboard locally or over your LAN with HTTPS.
+- Choose English, Simplified Chinese or Traditional Chinese.
 
 ![Mac Monitor overview](docs/screenshots/mac-monitor-overview.jpg)
 
+## Requirements
+
+macOS 14 or later. Apple Silicon is the target platform; the Intel package is available for development testing. No Node.js, Homebrew or other development tools are needed to use the app.
+
+The current version is a prerelease. Sensor availability varies by Mac model and drive connection.
+
 ## Install the prerelease
 
-Use [v0.1.8](https://github.com/cloudshadow/mac-monitor/releases/tag/v0.1.8). The v0.1.0 installer rejected normal `/Applications` permissions and could exit before installing anything. Run the following commands using the intended ordinary service-owner account. They select the archive for Apple Silicon or Intel and verify the installer and archive checksums:
+Download and install [v0.1.8](https://github.com/cloudshadow/mac-monitor/releases/tag/v0.1.8) with the commands below. Run them in Terminal using your regular macOS account; the installer selects your architecture, verifies checksums and requests administrator authorization.
 
 ```bash
 (
@@ -25,88 +34,33 @@ Use [v0.1.8](https://github.com/cloudshadow/mac-monitor/releases/tag/v0.1.8). Th
 )
 ```
 
-Review the installer before running it. Downloads run without administrator privileges; installation requests an administrator password, which Terminal does not display as you type. Wait for `Installed. Open /Applications/Mac Monitor.app; approve Gatekeeper when prompted.` before opening the app:
+After installation, open **Mac Monitor** from Applications, or run:
 
 ```bash
 open "/Applications/Mac Monitor.app"
 ```
 
-Closing the control window keeps monitoring active. Quit (⌘Q) stops the Agent for the current session without changing the boot preference; use Start service or Open monitor to resume. Open monitor refreshes the address and can request administrator authorization to start an installed service. Two state-aware service buttons control the boot preference and the current running session independently. If shutdown fails, the app warns that monitoring may still be running and allows the control window to close. The control window and web header display version information. On first local access, the page shows the account creation form directly; no separate control-window setup action is required. The app uses free ad-hoc signing; first-launch macOS approval and policy restrictions remain part of hardware acceptance testing. See the [installation guide](docs/installation.md) for installed paths, offline installation, and troubleshooting. Do not change `/Applications` permissions to work around an installer error.
+The app uses ad-hoc signing, so macOS may require first-launch approval. See the [installation guide](docs/installation.md) for offline installation and troubleshooting.
 
-The release includes arm64 and x86_64 archives, individual checksum files, and `SHA256SUMS`. Apple Silicon is the target for this release; the Intel package is provided for development diagnostics.
+## Use
 
-## Build and test
+1. Open the app and choose **Open monitor**.
+2. Create your account on the local dashboard when you first use it.
+3. Use **Overview**, **Applications** and **History** to view your metrics.
+4. For another device on the same network, use the LAN address shown in the app and follow the [HTTPS setup guide](docs/mobile-setup.md).
 
-Development requires Swift 6.1+ with Xcode or Command Line Tools, Node 22.12+, and Python 3 for the integration scripts:
+Closing the app window keeps monitoring active. Quitting with ⌘Q stops the current session. Service startup and launch at boot are controlled separately in the app.
 
-```bash
-npm --prefix web ci
-npm --prefix web run build
-bash scripts/swift.sh test -j 4
-node --test scripts/i18n/validate.test.mjs
-python3 scripts/smoke.py
-python3 scripts/lan-smoke.py
-```
+The memory percentage uses `(App estimate + Wired) / total`, excluding compressed memory. Temperature rings show readings in °C, rather than utilization.
 
-HTTP/TLS smoke tests use temporary data directories. They do not install system tasks or change certificate trust. Run the browser end-to-end test with:
+## Update
 
-```bash
-cd web
-npx playwright test
-```
+Choose **Check for updates** in the app and run the provided installation command. Updates preserve your account, history and service-start preferences.
 
-The browser test uses local Google Chrome by default. Set `CMM_CHROME` to use a different browser executable.
+## Development
 
-## Run a development instance
-
-```bash
-mkdir -m 700 /private/tmp/cloudmacmonitor-dev
-.build/debug/MonitorAgent --data-root /private/tmp/cloudmacmonitor-dev --web-root "$PWD/web/dist"
-# In another terminal, open the control window to create an account and launch the web interface.
-.build/debug/MonitorControl --data-root /private/tmp/cloudmacmonitor-dev
-```
-
-Production ownership is bound by the installer to an ordinary UID and its GeneratedUID, rather than inferred from the current desktop login. The Agent runs as that user in a system LaunchDaemon. HTTPS LAN access is enabled automatically on the active IPv4 address of en0 and retries after network changes. Other interfaces are not selected as fallbacks. First account creation is allowed directly from the same-origin loopback page; the LAN listener returns to the Mac for setup and cannot create accounts. LAN clients trust this Mac's local CA certificate, then use the same username/password without device pairing. Loopback and LAN sessions remain separate, and password resets invalidate existing sessions and streams. Existing account/history databases and the local CA are preserved on upgrade.
-
-## Package the app
-
-```bash
-bash scripts/package-app.sh 0.1.8
-CMM_ARCH=arm64 bash scripts/package-app.sh 0.1.8
-```
-
-These commands produce `artifacts/MacMonitor-0.1.8-<arch>.tar.gz`, its SHA-256 checksum file, and `artifacts/package/<arch>/Mac Monitor.app`. An Intel development machine can cross-compile the Apple Silicon package, but runtime compatibility still requires testing on the target hardware.
-
-For offline installation, copy the matching archive, checksum file, and installer to the target Mac. Review the script and run it as the intended ordinary owner; the installer requests administrator authorization:
-
-```bash
-package="artifacts/MacMonitor-0.1.8-$(uname -m).tar.gz"
-expected="$(awk '{print $1}' "$package.sha256")"
-bash scripts/install.sh 0.1.8 --local "$package" "$expected"
-```
-
-The download installer also accepts `scripts/install.sh VERSION HTTPS_RELEASE_BASE SHA256`. Its administrator phase rechecks the archive in a root-owned staging directory, rejects traversal and links, and installs the fixed app and LaunchDaemon paths. Upgrades preserve the account, history, and previous service-start preferences. The installer accepts the standard root:admin 775 permissions on `/Applications` without changing them. It stores the actual app in `/Library/Application Support/CloudMacMonitor/Mac Monitor.app` under root-owned, non-writable parents and creates a managed entry-point link at `/Applications/Mac Monitor.app`. The LaunchDaemon and administrator tool use the protected app path directly. Other installation parents remain strictly protected. The native update checker uses `ReleaseRepository` from the app bundle, configured as `cloudshadow/mac-monitor`. It checks published releases including prereleases and only offers a newer version. Local HTTP and LAN HTTPS share the local listener’s port (normally 8765), on separate IP addresses. Use Monitor port / Apply port in the control window to save and immediately apply a custom port (1–65535). A rejected change identifies the conflicting address and preserves the current configuration; startup fallback displays a warning with the configured and actual ports. If that port is occupied on the LAN address, local monitoring remains available and the control window reports the LAN error.
-
-## Monitoring and history
-
-System, application, temperature, and GPU sampling run every ten seconds, independently of connected viewers. Low-power or serious thermal conditions slow all four channels to twenty seconds. Drive SMART queries remain cached for sixty seconds. System history uses tiered retention for 30 days; application summaries retain the final CPU-average, observed-memory-peak, and disk-increment top-ten union for seven days. Pausing persistence keeps recent in-memory data available. Clearing history uses a recording-epoch barrier to invalidate previous data and queries.
-
-Temperature appears as CPU/graphics/drive peak summaries and a list of named readings in °C, with raw IDs available in details. Drive discovery includes external storage, with read-only ATA/NVMe SMART queries once per minute when the driver exposes the interface; unsupported connections or denied permissions show an unavailable reading. SMC labels follow the [MacMonitor M2 sensor reference](https://github.com/ryyansafar/MacMonitor/blob/main/SENSORS.md), with CPU/GPU die hotspots separated from proximity, SoC, and voltage-regulator readings. Reference names are not presented as verified mappings for every Mac model. Read-only SMC/HID/GPU interfaces may be unavailable on some models or under particular permissions. English, Simplified Chinese, and Traditional Chinese are available in the app.
-
-## Measure the actual Agent
-
-Build the Release Agent for the host architecture before running:
-
-```bash
-python3 scripts/runtime-benchmark.py --clients 0 --warmup 300 --duration 1800
-python3 scripts/runtime-benchmark.py --clients 1 --warmup 300 --duration 1800
-python3 scripts/runtime-benchmark.py --clients 3 --warmup 300 --duration 1800
-```
-
-The benchmark includes additional authenticated observer requests and curl-based viewers. It does not replace browser, mobile, physical-write-amplification, reference-machine, or 24-hour acceptance testing.
-
-See [performance](docs/performance.md), [mobile setup](docs/mobile-setup.md), [installation validation](docs/install-validation.md), the [release checklist](docs/release-checklist.md), and [implementation status](docs/implementation-status.md) for procedures and remaining acceptance work. These detailed project documents currently include Chinese text.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for build and test commands, and [the performance guide](docs/performance.md) for benchmarks.
 
 ## Licensing
 
-The project license and copyright holder still require confirmation by the owner; no project license has been granted by the prerelease. Dependency licenses and notices are included in the app and listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Contribution guidance is available in [CONTRIBUTING.md](CONTRIBUTING.md).
+No project license has been granted yet. Dependency licenses are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

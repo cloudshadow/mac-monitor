@@ -38,7 +38,7 @@ Download the matching `MacMonitor-0.1.8-arm64.tar.gz` or `MacMonitor-0.1.8-x86_6
 ```bash
 (
   set -e
-  echo "5d82cf380ac15d8031e2ec87403fae0ed72bd2f310e59be96a92429676fb5191  install.sh" | shasum -a 256 -c -
+  echo "42ed04b1e15b6a87ad68d1439753a66004720c971235aba225a591c029f7969f  install.sh" | shasum -a 256 -c -
   package="MacMonitor-0.1.8-$(uname -m).tar.gz"
   expected="$(awk '{print $1}' "$package.sha256")"
   bash install.sh 0.1.8 --local "$package" "$expected"
@@ -60,7 +60,7 @@ shasum -a 256 "$HOME/install-0.1.8.sh"
 ls -ld /Applications "/Applications/Mac Monitor.app" "/Library/Application Support/CloudMacMonitor/Mac Monitor.app"
 ```
 
-The expected installer digest is `5d82cf380ac15d8031e2ec87403fae0ed72bd2f310e59be96a92429676fb5191`. An unsafe or unmanaged legacy entry is refused rather than executing its helper.
+The expected installer digest is `42ed04b1e15b6a87ad68d1439753a66004720c971235aba225a591c029f7969f`. An unsafe or unmanaged legacy entry is refused rather than executing its helper.
 
 ### The app or installer file is missing
 

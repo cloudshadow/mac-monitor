@@ -16,3 +16,8 @@ Thumbs.db
 .vscode/
 web/test-results/
 web/playwright-report/
+
+# Local Spec Kit tooling and generated specifications
+/.specify/
+/specs/
+/.agents/skills/speckit-*/
