@@ -22,7 +22,7 @@ jobs:
       - run: python3 scripts/smoke.py
       - run: python3 scripts/port-smoke.py
       - run: python3 scripts/lan-smoke.py
-      - run: bash scripts/package-app.sh 0.1.9
+      - run: bash scripts/package-app.sh 0.1.10
       - uses: actions/upload-artifact@v4
         with:
           name: development-app

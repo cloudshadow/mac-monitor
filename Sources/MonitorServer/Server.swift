@@ -37,7 +37,8 @@ public final class ConnectionBudget: @unchecked Sendable {
   public init() {}
   func acquire(tls: Bool) -> Bool {
     counts.withLock { value in
-      guard value.total < 16, !tls || value.tls < 2 else { return false }
+      // Browsers open several HTTPS connections in parallel; the total cap also bounds handshakes.
+      guard value.total < 16 else { return false }
       value.total += 1
       if tls { value.tls += 1 }
       return true

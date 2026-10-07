@@ -7,7 +7,7 @@
 <key>CFBundleDisplayName</key><string>Mac Monitor</string>
 <key>CFBundleExecutable</key><string>MonitorControl</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>0.1.9</string>
+<key>CFBundleShortVersionString</key><string>0.1.10</string>
 <key>CFBundleVersion</key><string>1</string>
 <key>ReleaseRepository</key><string>cloudshadow/mac-monitor</string>
 <key>LSMinimumSystemVersion</key><string>14.0</string>

@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { spawn, type ChildProcess } from "node:child_process";
 import { mkdtempSync, rmSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { createConnection } from "node:net";
 const version = readFileSync(new URL('../../Resources/Control-Info.plist', import.meta.url), 'utf8').match(/CFBundleShortVersionString<\/key>\s*<string>([^<]+)<\/string>/)![1];
 let process: ChildProcess, base: string, root: string;
 test.beforeAll(async () => {
@@ -153,6 +154,47 @@ test("temperature readings and unavailable external drives fit a phone", async (
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
   await page.locator(".secondary-sensors summary").click();
   await page.locator(".temperature-panel").screenshot({ path: "../artifacts/temperature-phone.png" });
+});
+
+test("cold mobile pages load translations over real LAN HTTPS", async ({ browser, request }) => {
+  const status = await new Promise<{ lanAddress: string }>((resolve, reject) => {
+    let raw = "";
+    const socket = createConnection(root + "/run/control.sock");
+    socket.setTimeout(10000, () => socket.destroy(Error("Status request timed out")));
+    socket.on("connect", () => socket.write('{"command":"status"}\n'));
+    socket.on("error", reject);
+    socket.on("data", data => {
+      raw += data;
+      if (raw.endsWith("\n")) { resolve(JSON.parse(raw)); socket.end(); }
+    });
+  });
+  test.skip(!status.lanAddress, "en0 has no active LAN address");
+  if ((await (await request.get(base + "/api/v1/auth/status")).json()).status === "setupRequired") {
+    const setup = await request.post(base + "/api/v1/auth/setup", {
+      headers: { Origin: base }, data: { username: "browser-owner", password: "browser-password-12345" },
+    });
+    expect(setup.status()).toBe(201);
+  }
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const context = await browser.newContext({ ignoreHTTPSErrors: true, locale: "zh-CN", viewport: { width: 360, height: 800 } });
+    try {
+      const page = await context.newPage(), failures: string[] = [];
+      page.on("requestfailed", request => failures.push(new URL(request.url()).pathname));
+      await page.goto(status.lanAddress);
+      await expect(page.getByRole("heading", { name: "登录", exact: true })).toBeVisible();
+      await expect(page.getByRole("alert")).toHaveCount(0);
+      await expect(page.locator("header .version")).toHaveText("v" + version);
+      await page.reload();
+      await expect(page.getByRole("heading", { name: "登录", exact: true })).toBeVisible();
+      await page.getByLabel("用户名", { exact: true }).fill("browser-owner");
+      await page.getByLabel("密码（12–128 字符）", { exact: true }).fill("browser-password-12345");
+      await page.getByRole("button", { name: "继续", exact: true }).click();
+      await expect(page.locator(".metric h2").first()).toHaveText("CPU %");
+      await expect(page.locator(".connection-badge")).toHaveClass(/connected/);
+      await expect(page.getByRole("alert")).toHaveCount(0);
+      expect(failures).toEqual([]);
+    } finally { await context.close(); }
+  }
 });
 
 test("reload updates dashboard labels after delayed translations arrive", async ({ page }) => {

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-version="${1:-0.1.9}"
+version="${1:-0.1.10}"
 [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Invalid version' >&2; exit 64; }
 node scripts/i18n/generate.mjs
 CMM_VERSION="$version" npm --prefix web run build
