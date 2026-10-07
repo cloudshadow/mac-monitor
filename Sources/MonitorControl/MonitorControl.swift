@@ -387,6 +387,19 @@ struct ControlView: View {
           model.send("resetPassword", arguments: ["password": .string(value)])
         }.disabled(password.count < 12 || password.count > 128)
       }
+      if let bytes = model.status["savedDataBytes"].number {
+        Text(NativeKeys.savedData(size: ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)))
+      }
+      if let bytes = model.status["history"]["diskBytes"].number {
+        Text(NativeKeys.historyData(size: ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)))
+          .font(.caption).foregroundStyle(.secondary)
+      }
+      if model.status["history"]["state"].string == "resetting" {
+        HStack { ProgressView().controlSize(.small); Text(NativeKeys.cleaningData()) }
+      }
+      if let code = model.status["history"]["error"].string {
+        Text(NativeKeys.actionFailed(code: code)).foregroundStyle(.red)
+      }
       HStack {
         Button(NativeKeys.pause()) {
           model.send("history", arguments: ["action": .string("pause")])
@@ -395,7 +408,8 @@ struct ControlView: View {
           model.send("history", arguments: ["action": .string("resume")])
         }
         Button(NativeKeys.clear(), role: .destructive) { showClear = true }
-      }
+      }.disabled(model.status == .null || model.status["history"]["state"].string == "resetting")
+      Text(NativeKeys.clearHelp()).font(.caption).foregroundStyle(.secondary)
       Divider()
       Text(NativeKeys.lanHelp()).font(.caption).foregroundStyle(.secondary)
       if let address = model.status["lanAddress"].string, !address.isEmpty {
@@ -464,9 +478,17 @@ struct ControlView: View {
       }
       .alert(NativeKeys.clear(), isPresented: $showClear) {
         Button(NativeKeys.clear(), role: .destructive) {
-          model.send("history", arguments: ["action": .string("clear")])
+          model.send("history", arguments: ["action": .string("clear")], then: { result in
+            if case .object(var status) = model.status {
+              status["history"] = result
+              model.status = .object(status)
+            }
+            Task { model.refresh(silently: true) }
+          })
         }
         Button(NativeKeys.cancel(), role: .cancel) {}
+      } message: {
+        Text(NativeKeys.clearHelp())
       }
       .alert(NativeKeys.uninstall(), isPresented: $showUninstall) {
         Toggle(NativeKeys.deleteData(), isOn: $deleteData)

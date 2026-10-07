@@ -48,5 +48,9 @@
   "installUpdate": "Install update",
   "installingUpdate": "Downloading and installing the update… macOS may ask for administrator authorization.",
   "updateInstallFailed": "Could not install the update: {reason}",
-  "updateRestartFailed": "The update was installed, but the app could not reopen: {reason}. Reopen Mac Monitor."
+  "updateRestartFailed": "The update was installed, but the app could not reopen: {reason}. Reopen Mac Monitor.",
+  "savedData": "Saved data: {size}",
+  "historyData": "History: {size}",
+  "cleaningData": "Clearing history and reclaiming space…",
+  "clearHelp": "Delete all monitoring history and reclaim its disk space. Your account, settings, certificates, and recording preference are preserved."
 }

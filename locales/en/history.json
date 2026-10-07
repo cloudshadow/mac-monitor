@@ -8,6 +8,19 @@
   "precision": "Resolution {seconds} s · source {source} s",
   "recording": "Recording",
   "paused": "Paused; recent data remains available",
-  "summary": "Application summaries retain the final CPU / memory / disk top ten union, not every process.",
-  "metric": "Metric"
+  "summary": "Each row summarizes one application in a five-minute window. CPU is an average, memory is a peak, and disk values are totals. Each window retains the union of the CPU, memory, and disk top ten.",
+  "metric": "Metric",
+  "window": "Time window",
+  "cpu": "CPU",
+  "memory": "Memory",
+  "disk": "Disk",
+  "cpuAverage": "Average CPU",
+  "memoryPeak": "Peak memory",
+  "diskRead": "Disk read",
+  "diskWrite": "Disk write",
+  "selectedBy": "Top ten by",
+  "empty": "No data in this time range.",
+  "appRetention": "Application summaries are retained for seven days.",
+  "recordingError": "Recording is unavailable. Check the application’s recording status.",
+  "resetting": "Clearing history…"
 }

@@ -46,7 +46,6 @@ run_privileged "$stage/archive.tar.gz" "$expected" "$owner_name" "$owner_uid" "$
 set -euo pipefail
 source_archive="$1"; expected="$2"; owner_name="$3"; owner_uid="$4"; owner_guid="$5"
 root='/Library/Application Support/MacMonitor'
-old_root='/Library/Application Support/CloudMacMonitor'
 app="$root/Mac Monitor.app"
 public_app='/Applications/Mac Monitor.app'
 job='system/org.cloudmacmonitor.agent'
@@ -70,30 +69,12 @@ applications_gid="$(stat -f %g /Applications)"
 (( (8#$applications_mode & 8#002) == 0 && ((8#$applications_mode & 8#020) == 0 || applications_gid == 80) )) || { echo 'Unsafe Applications directory permissions' >&2; exit 1; }
 protected_parent '/Library/Application Support'
 protected_parent /Library/LaunchDaemons
-staging_root="$root"
-migrating=false
-if [[ -e "$old_root" || -L "$old_root" ]]; then
-  [[ ! -e "$root" && ! -L "$root" ]] || { echo 'Both installation directories exist; review them before migrating.' >&2; exit 1; }
-  protected_parent "$old_root/installation.json"
-  if [[ -e "$old_root/Mac Monitor.app" || -L "$old_root/Mac Monitor.app" ]]; then
-    protected_parent "$old_root/Mac Monitor.app/Contents/MacOS/MonitorMaintenance"
-  fi
-  [[ ! -e "$old_root/previous.app" && ! -L "$old_root/previous.app" ]] || { echo 'Previous recovery bundle exists; inspect it before migrating.' >&2; exit 1; }
-  [[ "$(plutil -extract ownerUid raw -o - "$old_root/installation.json")" == "$owner_uid" && "$(plutil -extract ownerGuid raw -o - "$old_root/installation.json")" == "$owner_guid" ]] || { echo 'Owner migration requires review.' >&2; exit 1; }
-  [[ -d "$old_root/data" && ! -L "$old_root/data" && "$(stat -f %u "$old_root/data")" == "$owner_uid" && "$(stat -f %Lp "$old_root/data")" == 700 ]] || { echo 'Unsafe existing data directory; nothing moved.' >&2; exit 1; }
-  if [[ -e "$public_app" || -L "$public_app" ]]; then
-    [[ -L "$public_app" && "$(stat -f %u "$public_app")" == 0 && "$(readlink "$public_app")" == "$old_root/Mac Monitor.app" ]] || { echo 'Unmanaged application entry; nothing moved.' >&2; exit 1; }
-  fi
-  staging_root="$old_root"
-  migrating=true
-else
-  [[ ! -L "$root" ]] || exit 1
-  if [[ ! -e "$root" ]]; then install -d -m 755 -o root -g wheel "$root"; fi
-  protected_parent "$root"
-fi
-lock="$staging_root/install.lock"
+[[ ! -L "$root" ]] || exit 1
+if [[ ! -e "$root" ]]; then install -d -m 755 -o root -g wheel "$root"; fi
+protected_parent "$root"
+lock="$root/install.lock"
 mkdir -m 700 "$lock" || { echo 'Installation already running, or interrupted lock requires review.' >&2; exit 1; }
-root_stage="$(mktemp -d "$staging_root/staging.XXXXXXXX")"
+root_stage="$(mktemp -d "$root/staging.XXXXXXXX")"
 trap 'rm -rf "$root_stage"; rmdir "$lock"' EXIT
 install -m 600 -o root -g wheel "$source_archive" "$root_stage/archive.tar.gz"
 [[ "$(shasum -a 256 "$root_stage/archive.tar.gz" | awk '{print $1}')" == "$expected" ]] || exit 1
@@ -108,60 +89,19 @@ new_app="$root_stage/extract/Mac Monitor.app"
 [[ -d "$new_app" && -z "$(find "$new_app" -type l -print -quit)" && -z "$(find "$new_app" -perm -4000 -print -quit)" ]] || exit 1
 codesign --verify --deep --strict "$new_app"
 for name in MonitorAgent MonitorControl MonitorMaintenance; do [[ -f "$new_app/Contents/MacOS/$name" && -x "$new_app/Contents/MacOS/$name" ]] || exit 1; done
-restart=false; enabled=true; legacy=false
-if [[ "$migrating" == true ]]; then
-  # Read state and flush through the old helper before its compiled path moves.
-  if [[ -e "$old_root/Mac Monitor.app" ]]; then
-    "$old_root/Mac Monitor.app/Contents/MacOS/MonitorMaintenance" status > "$root_stage/before.json"
-    enabled="$(plutil -extract bootEnabled raw -o - "$root_stage/before.json")"
-    if [[ "$(plutil -extract systemEnabled raw -o - "$root_stage/before.json")" != true ]]; then enabled=false; fi
-    if [[ "$(plutil -extract running raw -o - "$root_stage/before.json")" == true ]]; then restart=true; fi
-    "$old_root/Mac Monitor.app/Contents/MacOS/MonitorMaintenance" stop
-  else
-    # A removed app can still have saved data and a stale loaded job.
-    if [[ -e "$plist" || -L "$plist" ]]; then protected_parent "$plist"; fi
-    launchctl disable "$job"
-    if launchctl print "$job" >/dev/null 2>&1; then launchctl bootout "$job"; fi
-    restart=true
-  fi
-  [[ ! -e "$root" && ! -L "$root" ]] || { echo 'Migration destination appeared; nothing moved.' >&2; exit 1; }
-  mv "$old_root" "$root"
-  root_stage="$root/$(basename "$root_stage")"
-  new_app="$root_stage/extract/Mac Monitor.app"
-  lock="$root/install.lock"
-  if [[ -L "$public_app" ]]; then
-    [[ "$(stat -f %u "$public_app")" == 0 && "$(readlink "$public_app")" == "$old_root/Mac Monitor.app" ]] || exit 1
-    rm "$public_app"
-  fi
-fi
+restart=false; enabled=true
 if [[ -L "$public_app" ]]; then
   [[ "$(stat -f %u "$public_app")" == 0 && "$(readlink "$public_app")" == "$app" ]] || { echo 'Unmanaged application entry; nothing replaced.' >&2; exit 1; }
 elif [[ -e "$public_app" ]]; then
-  # Only migrate a legacy bundle whose entire original code path is still protected.
-  protected_parent "$public_app"
-  [[ -e "$root/installation.json" && ! -e "$app" && "$(plutil -extract CFBundleIdentifier raw -o - "$public_app/Contents/Info.plist")" == org.cloudmacmonitor.control ]] || { echo 'Unmanaged or unsafe legacy app; reviewed migration required.' >&2; exit 1; }
-  legacy=true
-fi
-# Keep the existing storage/service identity while migrating the visible app name.
-renamed_app="$root/Cloud Mac Monitor.app"
-renamed_launcher='/Applications/Cloud Mac Monitor.app'
-renaming=false
-if [[ ! -e "$app" && -e "$renamed_app" ]]; then
-  protected_parent "$renamed_app"
-  [[ "$(plutil -extract CFBundleIdentifier raw -o - "$renamed_app/Contents/Info.plist")" == org.cloudmacmonitor.control ]] || exit 1
-  if [[ -e "$renamed_launcher" || -L "$renamed_launcher" ]]; then
-    [[ -L "$renamed_launcher" && "$(stat -f %u "$renamed_launcher")" == 0 && "$(readlink "$renamed_launcher")" == "$renamed_app" ]] || { echo 'Unmanaged previous launcher; nothing replaced.' >&2; exit 1; }
-  fi
-  renaming=true
+  echo 'Unmanaged application entry; nothing replaced.' >&2
+  exit 1
 fi
 old="$root/previous.app"
 [[ ! -e "$old" && ! -L "$old" ]] || { echo 'Previous recovery bundle exists; inspect it before retrying.' >&2; exit 1; }
 if [[ -e "$root/installation.json" ]]; then
   protected_parent "$root/installation.json"
-  [[ "$(plutil -extract ownerUid raw -o - "$root/installation.json")" == "$owner_uid" && "$(plutil -extract ownerGuid raw -o - "$root/installation.json")" == "$owner_guid" ]] || { echo 'Owner migration requires an explicit reviewed migration.' >&2; exit 1; }
+  [[ "$(plutil -extract ownerUid raw -o - "$root/installation.json")" == "$owner_uid" && "$(plutil -extract ownerGuid raw -o - "$root/installation.json")" == "$owner_guid" ]] || { echo 'Installation belongs to a different owner; nothing replaced.' >&2; exit 1; }
   installed_app="$app"
-  if [[ "$renaming" == true ]]; then installed_app="$renamed_app"; fi
-  if [[ "$legacy" == true ]]; then installed_app="$public_app"; fi
   if [[ ! -e "$installed_app" && ! -L "$installed_app" ]]; then
     # Uninstall preserves installation.json and data unless deletion was requested.
     # There is no old executable to trust or run in this state.
@@ -177,14 +117,12 @@ if [[ -e "$root/installation.json" ]]; then
     enabled=true
     restart=true
   else
-    if [[ "$migrating" != true ]]; then
-      protected_parent "$installed_app/Contents/MacOS/MonitorMaintenance"
-      "$installed_app/Contents/MacOS/MonitorMaintenance" status > "$root_stage/before.json"
-      enabled="$(plutil -extract bootEnabled raw -o - "$root_stage/before.json")"
-      if [[ "$(plutil -extract systemEnabled raw -o - "$root_stage/before.json")" != true ]]; then enabled=false; fi
-      if [[ "$(plutil -extract running raw -o - "$root_stage/before.json")" == true ]]; then restart=true; fi
-      "$installed_app/Contents/MacOS/MonitorMaintenance" stop
-    fi
+    protected_parent "$installed_app/Contents/MacOS/MonitorMaintenance"
+    "$installed_app/Contents/MacOS/MonitorMaintenance" status > "$root_stage/before.json"
+    enabled="$(plutil -extract bootEnabled raw -o - "$root_stage/before.json")"
+    if [[ "$(plutil -extract systemEnabled raw -o - "$root_stage/before.json")" != true ]]; then enabled=false; fi
+    if [[ "$(plutil -extract running raw -o - "$root_stage/before.json")" == true ]]; then restart=true; fi
+    "$installed_app/Contents/MacOS/MonitorMaintenance" stop
   fi
 else
   restart=true
@@ -192,9 +130,7 @@ else
 fi
 printf '{"ownerName":"%s","ownerUid":%s,"ownerGuid":"%s","bootEnabled":%s}\n' "$owner_name" "$owner_uid" "$owner_guid" "$enabled" > "$root_stage/installation.json"
 install -m 644 -o root -g wheel "$root_stage/installation.json" "$root/installation.json"
-if [[ "$renaming" == true ]]; then mv "$renamed_app" "$old";
-elif [[ "$legacy" == true ]]; then mv "$public_app" "$old";
-elif [[ -e "$app" ]]; then protected_parent "$app"; mv "$app" "$old"; fi
+if [[ -e "$app" ]]; then protected_parent "$app"; mv "$app" "$old"; fi
 mv "$new_app" "$app"
 chown -R root:wheel "$app"; chmod -R go-w "$app"
 protected_parent "$app/Contents/MacOS/MonitorMaintenance"
@@ -213,7 +149,6 @@ if [[ "$restart" == true ]]; then
   fi
   if [[ "$enabled" != true ]]; then launchctl disable "$job"; fi
 fi
-if [[ "$renaming" == true && -L "$renamed_launcher" ]]; then rm "$renamed_launcher"; fi
 rm -rf "$old"
 echo 'Installed. Open /Applications/Mac Monitor.app; approve Gatekeeper when prompted.'
 ROOT

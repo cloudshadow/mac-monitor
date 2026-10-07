@@ -169,6 +169,19 @@ public final class AgentRuntime: @unchecked Sendable {
     default: throw APIError(400, "invalidCommand")
     }
   }
+  static func savedDataBytes(root: String) -> Int64 {
+    let keys: [URLResourceKey] = [.isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey]
+    guard let files = FileManager.default.enumerator(
+      at: URL(fileURLWithPath: root), includingPropertiesForKeys: keys
+    ) else { return 0 }
+    return files.reduce(0) { total, item in
+      guard let url = item as? URL,
+        let value = try? url.resourceValues(forKeys: Set(keys)),
+        value.isRegularFile == true, value.isSymbolicLink != true
+      else { return total }
+      return total + Int64(value.fileSize ?? 0)
+    }
+  }
   private func statusSnapshot() -> JSONValue {
     let actualPort = URLComponents(string: address)?.port ?? 0
     return .object([
@@ -177,6 +190,7 @@ public final class AgentRuntime: @unchecked Sendable {
       "actualPort": .number(Double(actualPort)),
       "portFallback": .bool(configuredPort != 0 && actualPort != configuredPort),
       "recoveryRequired": .bool(state.recoveryRequired), "history": history.status(),
+      "savedDataBytes": .number(Double(Self.savedDataBytes(root: root))),
       "readyToStop": .bool(stopping.withLock { $0 }),
       "lanAddress": .string(lan.withLock { $0.address }),
       "lanInterface": .string(Self.lanInterface),

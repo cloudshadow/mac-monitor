@@ -2,7 +2,7 @@
 
 ## Download and install
 
-Use the [v0.1.13 release](https://github.com/cloudshadow/mac-monitor/releases/tag/v0.1.13) and the complete commands in [README: Install](../README.md#install). They download `install-0.1.13.sh`, verify its checksum, select the archive for the current architecture, and verify the archive before installation. Apple Silicon is the target platform; the Intel archive is provided for development diagnostics. macOS 14 or later is required.
+Use the [v0.1.14 release](https://github.com/cloudshadow/mac-monitor/releases/tag/v0.1.14) and the complete commands in [README: Install](../README.md#install). They download `install-0.1.14.sh`, verify its checksum, select the archive for the current architecture, and verify the archive before installation. Apple Silicon is the target platform; the Intel archive is provided for development diagnostics. macOS 14 or later is required.
 
 Run the commands as the ordinary account that will own the monitoring service. Do not run the entire installer with `sudo`; it requests administrator authorization for its installation phase. Terminal does not show characters while you enter the password. Node, Homebrew, and development tools are not required for the installed app.
 
@@ -31,19 +31,17 @@ Open the web interface from the control window. If no account exists, the local 
 
 The service and administrator helper execute directly from the protected bundle. The installer accepts the normal root:admin `775` permissions on `/Applications` without changing them. Other installation parents must remain protected. Upgrades preserve account/history data and service-start preferences.
 
-Upgrading an existing installation moves `/Library/Application Support/CloudMacMonitor` to `MacMonitor` after verifying the new package and stopping the old service. Account and history databases, certificates, ownership, and service-start preferences are preserved. If both directories already exist, installation stops for review instead of combining them.
-
 ## Offline installation
 
-Download the matching `MacMonitor-0.1.13-arm64.tar.gz` or `MacMonitor-0.1.13-x86_64.tar.gz`, its `.sha256` file, and `install.sh` from the same release. Copy them into one directory on the target Mac, review the installer, and run from that directory:
+Download the matching `MacMonitor-0.1.14-arm64.tar.gz` or `MacMonitor-0.1.14-x86_64.tar.gz`, its `.sha256` file, and `install.sh` from the same release. Copy them into one directory on the target Mac, review the installer, and run from that directory:
 
 ```bash
 (
   set -e
-  echo "42ed04b1e15b6a87ad68d1439753a66004720c971235aba225a591c029f7969f  install.sh" | shasum -a 256 -c -
-  package="MacMonitor-0.1.13-$(uname -m).tar.gz"
+  echo "2af1127d8841745f4482340156d4f0cc141335dcb63905ac8b6afb68415a56a6  install.sh" | shasum -a 256 -c -
+  package="MacMonitor-0.1.14-$(uname -m).tar.gz"
   expected="$(awk '{print $1}' "$package.sha256")"
-  bash install.sh 0.1.13 --local "$package" "$expected"
+  bash install.sh 0.1.14 --local "$package" "$expected"
 )
 ```
 
@@ -53,24 +51,24 @@ The installer checks that the archive matches the version and architecture and v
 
 ### `Writable installation parent: /Applications`
 
-The v0.1.0 installer treated the normal administrator-group write permission on `/Applications` as unsafe and exited before copying the app. Download and run the v0.1.13 installer using the README commands, even if you already have a file named `install.sh`. Do not use `chmod` on `/Applications` to bypass the check.
+The v0.1.0 installer treated the normal administrator-group write permission on `/Applications` as unsafe and exited before copying the app. Download and run the v0.1.14 installer using the README commands, even if you already have a file named `install.sh`. Do not use `chmod` on `/Applications` to bypass the check.
 
-If the error persists with the verified v0.1.13 script, an existing legacy app may have triggered the protected-path migration check. Do not delete the app or installation data as a workaround. Collect the full installer output and these read-only diagnostics for review:
+If the error persists with the verified v0.1.14 script, an unmanaged application entry or unsafe installation path may have triggered the protected-path check. Do not delete the app or installation data as a workaround. Collect the full installer output and these read-only diagnostics for review:
 
 ```bash
-shasum -a 256 "$HOME/install-0.1.13.sh"
+shasum -a 256 "$HOME/install-0.1.14.sh"
 ls -ld /Applications "/Applications/Mac Monitor.app" "/Library/Application Support/MacMonitor/Mac Monitor.app"
 ```
 
-The expected installer digest is `42ed04b1e15b6a87ad68d1439753a66004720c971235aba225a591c029f7969f`. An unsafe or unmanaged legacy entry is refused rather than executing its helper.
+The expected installer digest is `2af1127d8841745f4482340156d4f0cc141335dcb63905ac8b6afb68415a56a6`. An unsafe or unmanaged entry is refused rather than executing its helper.
 
 ### The app or installer file is missing
 
-`No such file or directory` for `install-0.1.13.sh` means that file is not in the specified directory. The README commands download it into your home directory and run it there. A missing app after an installer error means installation did not complete; the error line is not a success message.
+`No such file or directory` for `install-0.1.14.sh` means that file is not in the specified directory. The README commands download it into your home directory and run it there. A missing app after an installer error means installation did not complete; the error line is not a success message.
 
 ### Missing old MonitorMaintenance after uninstall
 
-Uninstalling while preserving data leaves installation.json but removes the app. Installers through v0.1.5 mistake this for an upgrade and fail with a missing old MonitorMaintenance and Unsafe path. Use the verified v0.1.13 installer above to reinstall with the same owner. It preserves account/history data and restores the removed app and service. Do not delete the saved-data directory. A partial bundle is a separate state and remains refused for review.
+Uninstalling while preserving data leaves installation.json but removes the app. Installers through v0.1.5 mistake this for an upgrade and fail with a missing old MonitorMaintenance and Unsafe path. Use the verified v0.1.14 installer above to reinstall with the same owner. It preserves account/history data and restores the removed app and service. Do not delete the saved-data directory. A partial bundle is a separate state and remains refused for review.
 
 ### Checksum mismatch or installation/start failure
 
@@ -91,6 +89,12 @@ The control window displays the app version and build; the web header displays i
 **Monitor port / Apply port** sets a shared port number (1–65535) for local HTTP and LAN HTTPS. The change is applied immediately and saved in the service data for future starts and upgrades. Reopen the monitor after applying a change. If the new port is occupied on either address, the control window identifies the local or LAN conflict and keeps the current listeners and saved configuration. On startup, an unavailable saved local port falls back to an available port with a visible warning showing both numbers. A LAN conflict is reported without interrupting local monitoring.
 
 **Refresh status** rechecks the local monitoring address, network interfaces, and recording state. It does not restart the service or force a new temperature sample. **LAN access** starts automatically on en0. The control window shows the current HTTPS address and CA certificate path; there are no interface-selection, LAN enable/disable, pairing or device-management controls. Trust the public CA certificate on another device, then sign in with the same account/password. If en0 has no usable IPv4 address, LAN is temporarily unavailable and retries automatically while local monitoring continues.
+
+## Saved data and history
+
+The control window shows total saved-data size and the portion used by history, including database journal files. **Clear history** asks for confirmation, clears recorded system and application data, and compacts the database to reclaim disk space. Cleanup runs in the background; the window displays its progress and refreshes the size automatically. Account credentials, settings, TLS certificates, and the pause/resume preference are preserved.
+
+The web history page shows application summaries by five-minute window, with average CPU, peak memory, cumulative disk read/write bytes, and the categories that retained each application. Repeated names refer to different windows. Application summaries are available for seven days, while system history is retained for thirty days.
 
 ## Quit and stop behavior
 

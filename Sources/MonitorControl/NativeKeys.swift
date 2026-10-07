@@ -51,4 +51,8 @@ enum NativeKeys {
     static func installingUpdate() -> String { NativeLocalization.text("installingUpdate", parameters: [:]) }
     static func updateInstallFailed(reason: String) -> String { NativeLocalization.text("updateInstallFailed", parameters: ["reason": reason]) }
     static func updateRestartFailed(reason: String) -> String { NativeLocalization.text("updateRestartFailed", parameters: ["reason": reason]) }
+    static func savedData(size: String) -> String { NativeLocalization.text("savedData", parameters: ["size": size]) }
+    static func historyData(size: String) -> String { NativeLocalization.text("historyData", parameters: ["size": size]) }
+    static func cleaningData() -> String { NativeLocalization.text("cleaningData", parameters: [:]) }
+    static func clearHelp() -> String { NativeLocalization.text("clearHelp", parameters: [:]) }
 }

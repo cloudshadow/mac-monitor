@@ -449,3 +449,64 @@ test("dark sign-in form fits a narrow phone and landscape viewport", async ({ pa
     if (viewport.width === 390) await page.screenshot({ path: "../artifacts/mobile-sign-in-390.png", fullPage: true });
   }
 });
+
+
+test("history aligns controls, loads direct navigation summaries, and finishes failed queries", async ({ page }) => {
+  let failure = false;
+  const ranges: number[] = [];
+  const now = Math.floor(Date.now() / 1000);
+  await page.route("**/api/v1/**", async route => {
+    const url = new URL(route.request().url()), name = url.pathname;
+    if (name.endsWith("/events")) {
+      await route.fulfill({ contentType: "text/event-stream", body: ": connected\n\n" });
+      return;
+    }
+    if (name.endsWith("/history/system")) {
+      ranges.push(Number(url.searchParams.get("to")) - Number(url.searchParams.get("from")));
+      await route.fulfill(failure
+        ? { status: 503, json: { error: { code: "queryBudgetExceeded" } } }
+        : { json: { series: { "cpu.total": [{ bucketStartUtc: now-60, bucketEndUtc: now, avg: 25, resolutionSeconds: 60, sourceResolutionSeconds: 60 }] }, recordingStatus: { enabled: true, state: "error", error: "historyWriteFailed" } } });
+      return;
+    }
+    const body = name.endsWith("/auth/status") ? { status: "authenticated" }
+      : name.endsWith("/auth/session") ? { csrfToken: "fixture" }
+      : name.endsWith("/viewers") ? { viewerId: "fixture" }
+      : name.endsWith("/snapshot") ? { thermalState: 0, sensors: [] }
+      : name.endsWith("/history/apps") ? { rows: [{ id: "code", name: "Code", cpuPercentCore: 0.3, physicalFootprintPeakBytes: 104857600, diskReadBytes: 2097152, diskWriteBytes: 1048576, bucketStartUtc: now-300, bucketEndUtc: now, selectedBy: ["cpu", "memory", "disk"] }] }
+      : name.endsWith("/recent/system") ? { series: {} } : {};
+    await route.fulfill({ json: body });
+  });
+  await page.goto(base);
+  await page.locator("header select").selectOption("zh-Hans");
+  // Go straight from Overview to History without ever loading Applications.
+  await page.getByRole("button", { name: "历史", exact: true }).click();
+  await expect(page.locator("main tbody tr")).toContainText("CPU, 内存, 磁盘");
+  await expect(page.locator("main tbody tr")).toContainText("100 MiB");
+  await expect(page.locator("main tbody tr")).toContainText("2 MiB");
+  await expect(page.locator("main tbody tr")).not.toContainText("加载中");
+  await expect(page.locator("main")).toContainText("历史记录不可用");
+  await expect(page.locator("main p").filter({ hasText: /^记录中$/ })).toHaveCount(0);
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    if (width === 1440) {
+      const controls = await page.locator(".history-toolbar select, .history-toolbar button").all();
+      const bottoms = await Promise.all(controls.map(async control => { const r = await control.boundingBox(); return r!.y+r!.height; }));
+      expect(Math.max(...bottoms)-Math.min(...bottoms)).toBeLessThanOrEqual(1);
+    }
+  }
+  for (const range of ["86400", "604800"]) {
+    await page.getByLabel("时间范围").selectOption(range);
+    await expect.poll(() => ranges.at(-1)).toBe(Number(range));
+    await expect(page.locator("main canvas")).toBeVisible();
+  }
+  failure = true;
+  await page.getByRole("button", { name: "重试", exact: true }).click();
+  await expect(page.getByRole("alert")).toHaveCount(1);
+  await expect(page.locator("main .card [role=status]")).toHaveCount(0);
+  await expect(page.locator("main p").filter({ hasText: "操作失败，请重试。" })).toHaveCount(1);
+  failure = false;
+  await page.getByRole("button", { name: "重试", exact: true }).click();
+  await expect(page.locator("main canvas")).toBeVisible();
+  await expect(page.locator("main p").filter({ hasText: "操作失败，请重试。" })).toHaveCount(0);
+});

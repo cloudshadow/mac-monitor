@@ -6,14 +6,18 @@ import { api } from "../store/api";
 import { sensorName, showSensor } from "../components/Temperatures";
 import { TimeSeries, type Point } from "../components/TimeSeries";
 export function History() {
-  const { t, number } = useI18n(),
+  const { t, number, date } = useI18n(),
     { snapshot } = useMetrics(),
     epoch = snapshot.recordingEpoch,
     [range, setRange] = useState(300),
     [seriesId, setSeriesId] = useState("cpu.total"),
     [result, setResult] = useState<Record<string, any>>(),
     [apps, setApps] = useState<Record<string, any>>(),
-    [refresh, setRefresh] = useState(0);
+    [refresh, setRefresh] = useState(0),
+    [systemLoading, setSystemLoading] = useState(false),
+    [appsLoading, setAppsLoading] = useState(false),
+    [systemFailed, setSystemFailed] = useState(false),
+    [appsFailed, setAppsFailed] = useState(false);
   const currentEpoch = useRef(epoch),
     appRange = useRef({ from: 0, to: 0 }),
     requestRevision = useRef(0);
@@ -32,7 +36,11 @@ export function History() {
     let alive = true;
     setResult(undefined);
     setApps(undefined);
-    const now = Date.now() / 1000,
+    setSystemLoading(true);
+    setAppsLoading(range <= 7 * 86400);
+    setSystemFailed(false);
+    setAppsFailed(false);
+    const now = Math.floor(Date.now() / 1000),
       params = new URLSearchParams({
         from: String(now - range),
         to: String(now),
@@ -45,9 +53,9 @@ export function History() {
         if (alive) setResult(r);
       })
       .catch((e) => {
-        if (alive)
-          showError(e);
-      });
+        if (alive) { setSystemFailed(true); showError(e); }
+      })
+      .finally(() => { if (alive) setSystemLoading(false); });
     if (range <= 7 * 86400)
       void api(
         "/history/apps?from=" + (now - range) + "&to=" + now + "&limit=100",
@@ -56,7 +64,8 @@ export function History() {
         .then((r) => {
           if (alive) setApps(r);
         })
-        .catch(() => {});
+        .catch(e => { if (alive) { setAppsFailed(true); showError(e); } })
+        .finally(() => { if (alive) setAppsLoading(false); });
     return () => {
       alive = false;
       controller.abort();
@@ -85,7 +94,7 @@ export function History() {
   }
   return (
     <section className="card">
-      <div className="toolbar">
+      <div className="toolbar history-toolbar">
         <label>
           {t("history:range")}{" "}
           <select
@@ -104,14 +113,18 @@ export function History() {
             ))}
           </select>
         </label>
+        <label>{t("history:metric")}
         <select aria-label={t("history:metric")} value={seriesId} onChange={e => setSeriesId(e.target.value)}>
           {choices.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
         </select>
+        </label>
         <button onClick={() => setRefresh((v) => v + 1)}>
           {t("common:retry")}
         </button>
       </div>
       <p>{t("history:coverage")}</p>
+      {systemLoading && <p role="status">{t("common:loading")}</p>}
+      {systemFailed && <p>{t("common:error")}</p>}
       {result &&
         Object.entries(result.series).map(([id, value]) => {
           const points = value as Point[];
@@ -127,7 +140,7 @@ export function History() {
               <h2>
                 {choices.find(([series]) => series === id)?.[1] ?? id}
               </h2>
-              <TimeSeries points={points} label={id} />
+              {points.length ? <TimeSeries points={points} label={id} /> : <p>{t("history:empty")}</p>}
               {resolutions.map((r) => (
                 <small key={r}>
                   {t("history:precision", {
@@ -139,28 +152,44 @@ export function History() {
             </section>
           );
         })}
-      <p>
-        {result?.recordingStatus?.enabled
-          ? t("history:recording")
-          : result
-            ? t("history:paused")
-            : t("common:loading")}
-      </p>
+      {result?.recordingStatus && <p>
+        {result.recordingStatus.state === "error" || result.recordingStatus.error
+          ? t("history:recordingError")
+          : result.recordingStatus.state === "resetting"
+            ? t("history:resetting")
+            : result.recordingStatus.enabled ? t("history:recording") : t("history:paused")}
+      </p>}
       <p>{t("history:summary")}</p>
-      {apps?.rows.map((row: Record<string, any>, i: number) => (
-        <p key={row.id + ":" + i}>
-          {row.name} ·{" "}
-          {typeof row.cpuPercentCore === "number"
-            ? number(row.cpuPercentCore, { maximumFractionDigits: 1 }) + " %"
-            : t("common:unknown")}{" "}
-          ·{" "}
-          {row.selectedBy
-            .map((by: string) =>
-              t(("apps:" + (by === "disk" ? "diskRead" : by)) as "apps:cpu"),
-            )
-            .join(", ")}
-        </p>
-      ))}
+      {range > 7 * 86400 && <p>{t("history:appRetention")}</p>}
+      {appsLoading && <p role="status">{t("common:loading")}</p>}
+      {appsFailed && <p>{t("common:error")}</p>}
+      {apps && (apps.rows.length ? (
+        <div className="table-scroll" tabIndex={0} role="region" aria-label={t("common:apps")}>
+          <table>
+            <thead><tr>
+              <th>{t("common:apps")}</th><th>{t("history:window")}</th>
+              <th>{t("history:cpuAverage")}</th><th>{t("history:memoryPeak")}</th>
+              <th>{t("history:diskRead")}</th><th>{t("history:diskWrite")}</th>
+              <th>{t("history:selectedBy")}</th>
+            </tr></thead>
+            <tbody>{apps.rows.map((row: Record<string, any>, i: number) => (
+              <tr key={row.id + ":" + i}>
+                <td>{row.name}</td>
+                <td>{typeof row.bucketStartUtc === "number" && typeof row.bucketEndUtc === "number"
+                  ? date(row.bucketStartUtc * 1000) + " – " + date(row.bucketEndUtc * 1000)
+                  : t("common:unknown")}</td>
+                {["cpuPercentCore", "physicalFootprintPeakBytes", "diskReadBytes", "diskWriteBytes"].map((field, index) => (
+                  <td key={field}>{typeof row[field] === "number"
+                    ? number(index === 0 ? row[field] : row[field] / 1048576, { maximumFractionDigits: 1 }) + (index === 0 ? " %" : " MiB")
+                    : t("common:unknown")}</td>
+                ))}
+                <td>{(row.selectedBy ?? []).filter((by: string) => ["cpu", "memory", "disk"].includes(by))
+                  .map((by: string) => t(("history:" + by) as "history:cpu")).join(", ")}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+      ) : <p>{t("history:empty")}</p>)}
       {apps?.nextCursor && (
         <button onClick={() => void nextApplications()}>
           {t("common:next")}

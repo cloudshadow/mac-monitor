@@ -1100,6 +1100,94 @@
           }
         }
       }
+    },
+    "savedData": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved data: %1$@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存的数据：%1$@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "儲存的資料：%1$@"
+          }
+        }
+      }
+    },
+    "historyData": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "History: %1$@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "其中历史数据：%1$@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "其中歷史資料：%1$@"
+          }
+        }
+      }
+    },
+    "cleaningData": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clearing history and reclaiming space…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在清理历史并回收空间…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在清除歷史並回收空間…"
+          }
+        }
+      }
+    },
+    "clearHelp": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete all monitoring history and reclaim its disk space. Your account, settings, certificates, and recording preference are preserved."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除所有监控历史并回收磁盘空间。账户、设置、证书和记录开关保持不变。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "刪除所有監控歷史並回收磁碟空間。帳戶、設定、憑證與記錄開關維持不變。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

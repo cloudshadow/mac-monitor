@@ -8,6 +8,19 @@
   "precision": "輸出精度 {seconds} 秒 · 來源 {source} 秒",
   "recording": "記錄中",
   "paused": "已暫停，近期資料仍可讀",
-  "summary": "應用摘要保留最終 CPU／記憶體／磁碟各前十名的聯集，並非完整程序稽核。",
-  "metric": "指標"
+  "summary": "每列是一個應用程式在 5 分鐘內的摘要：CPU 為平均值，記憶體為峰值，磁碟為累計讀寫量。每個時間視窗保留 CPU、記憶體、磁碟各前十名的聯集。",
+  "metric": "指標",
+  "window": "時間視窗",
+  "cpu": "CPU",
+  "memory": "記憶體",
+  "disk": "磁碟",
+  "cpuAverage": "平均 CPU",
+  "memoryPeak": "記憶體峰值",
+  "diskRead": "磁碟讀取量",
+  "diskWrite": "磁碟寫入量",
+  "selectedBy": "入選前十項",
+  "empty": "此時間範圍內沒有資料。",
+  "appRetention": "應用程式摘要保留 7 天。",
+  "recordingError": "歷史記錄無法使用，請在應用程式中檢查記錄狀態。",
+  "resetting": "正在清除歷史…"
 }

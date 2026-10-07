@@ -55,6 +55,7 @@ import Testing
     _ = try await history.control("pause")
     history.ingest(series: ["cpu.total": 30], at: now, durationMs: 1000)
     _ = try await history.control("clear")
+    try await history.prepareStop()
     #expect(history.epoch == "2")
     #expect(history.recent.allocatedBytes == 0)
     let after = try await history.query(
@@ -105,7 +106,12 @@ import Testing
     from: now - 500, to: now + 1, limit: 100, cursor: nil, sort: "cpu")
   #expect(before["rows"].array.count == 30)
   #expect(before["rows"].array.allSatisfy { !$0["selectedBy"].array.isEmpty })
+  let start = try #require(before["rows"].array.first?["bucketStartUtc"].number)
+  let overlapping = try await history.queryApps(from: start + 1, to: now + 1,
+    limit: 100, cursor: nil, sort: "cpu")
+  #expect(overlapping["rows"].array.count == before["rows"].array.count)
   _ = try await history.control("clear")
+  try await history.prepareStop()
   let after = try await history.queryApps(
     from: now - 500, to: now + 1, limit: 100, cursor: nil, sort: "cpu")
   #expect(after["rows"].array.isEmpty)
@@ -138,4 +144,60 @@ import Testing
   let missing = try await history.queryApps(from: now - 500, to: now + 1, limit: 100, cursor: nil, sort: "cpu", appId: "absent")
   #expect(missing["notRetained"].bool == true)
   #expect(missing["rows"].array.isEmpty)
+}
+
+@Test func dayAndWeekQueriesAndCleanupHandleStoredHistory() async throws {
+  let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+  try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+  defer { try? FileManager.default.removeItem(at: root) }
+  let history = HistoryDatabase(path: root.appendingPathComponent("history.sqlite").path)
+  let fixture = try SQLite(path: history.path)
+  let now = floor(Date().timeIntervalSince1970)
+  let end = floor(now / 3600) * 3600
+  try fixture.transaction {
+    for res in [60, 300, 3600] {
+      let count = 7 * 86400 / res
+      try fixture.exec("WITH RECURSIVE n(i) AS (SELECT 0 UNION ALL SELECT i+1 FROM n WHERE i+1<\(count)) INSERT INTO buckets SELECT '1','fixture','cpu.total',\(res),\(end)-604800+i*\(res),\(end)-604800+(i+1)*\(res),25*\(res)*1000,\(res)*1000,1,25,25,0 FROM n")
+    }
+    try fixture.exec("WITH RECURSIVE n(i) AS (SELECT 0 UNION ALL SELECT i+1 FROM n WHERE i+1<10000) INSERT INTO app_buckets SELECT '1','fixture',\(end)-300*(i/10+1),'app-'||(i%10),json_object('id','app-'||(i%10),'name',printf('%02000d',i),'cpuPercentCore',i%10,'selectedBy',json_array('cpu','memory','disk'),'bucketStartUtc',\(end)-300*(i/10+1),'bucketEndUtc',\(end)-300*(i/10)) FROM n")
+  }
+  try fixture.checkpoint()
+  let beforeBytes = history.storageBytes()
+  #expect(beforeBytes > 1_000_000)
+  // Keep recent samples present while querying persisted day/week data.
+  history.recent.append([RecentBuffer.Point(epoch: history.epoch, segment: history.segment,
+    series: "cpu.total", time: now, durationMs: 10000, value: 30, persisted: true)])
+  for range in [86400.0, 604800.0] {
+    let result = try await history.query(series: ["cpu.total"], from: now-range, to: now, maxPoints: 600)
+    #expect(!result["series"]["cpu.total"].array.isEmpty)
+    #expect(result["series"]["cpu.total"].array.count <= 600)
+    let apps = try await history.queryApps(from: now-range, to: now, limit: 100, cursor: nil, sort: "cpu")
+    #expect(apps["rows"].array.count == 100)
+    let page = try await history.queryApps(from: now-range, to: now, limit: 100,
+      cursor: apps["nextCursor"].string, sort: "cpu")
+    #expect(page["rows"].array.count == 100)
+    #expect(apps["rows"].array.first?["bucketStartUtc"] != page["rows"].array.first?["bucketStartUtc"])
+  }
+  _ = try await history.control("pause")
+  _ = try await history.control("clear")
+  try await history.prepareStop()
+  #expect(history.storageBytes() < beforeBytes / 10)
+  #expect(history.status()["state"].string == "paused")
+  #expect(history.epoch == "2")
+  #expect(try fixture.rows("SELECT * FROM buckets LIMIT 1").isEmpty)
+  #expect(try fixture.rows("SELECT * FROM app_buckets LIMIT 1").isEmpty)
+  _ = try await history.control("resume")
+  #expect(history.enabled)
+}
+
+@Test func savedDataSizeIncludesHistoryAndSecretsWithoutFollowingLinks() throws {
+  let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+  try FileManager.default.createDirectory(at: root.appendingPathComponent("data/secrets"), withIntermediateDirectories: true)
+  defer { try? FileManager.default.removeItem(at: root) }
+  try Data(repeating: 0, count: 1024).write(to: root.appendingPathComponent("data/history.sqlite"))
+  try Data(repeating: 0, count: 128).write(to: root.appendingPathComponent("data/secrets/ca.pem"))
+  try Data(repeating: 0, count: 4096).write(to: root.appendingPathComponent("outside"))
+  try FileManager.default.createSymbolicLink(at: root.appendingPathComponent("data/link"), withDestinationURL: root.appendingPathComponent("outside"))
+  try FileManager.default.createSymbolicLink(at: root.appendingPathComponent("data/directory-link"), withDestinationURL: root)
+  #expect(AgentRuntime.savedDataBytes(root: root.appendingPathComponent("data").path) == 1152)
 }

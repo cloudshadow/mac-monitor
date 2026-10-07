@@ -38,7 +38,7 @@ public final class HistoryDatabase: @unchecked Sendable {
         "SELECT epoch,segment,series,res,start,end,sum,covered,count,min,max,partial FROM buckets LIMIT 0"
       )
       _ = try connection.rows("SELECT epoch,segment,start,app_id,body FROM app_buckets LIMIT 0")
-      try connection.exec("PRAGMA max_page_count=61440;")
+      try connection.exec("CREATE INDEX IF NOT EXISTS app_range ON app_buckets(epoch,start,app_id); PRAGMA max_page_count=61440;")
       let control = try connection.rows(
         "SELECT CAST(epoch AS TEXT) AS epoch,enabled FROM control WHERE id=1"
       ).first
@@ -370,9 +370,9 @@ public final class HistoryDatabase: @unchecked Sendable {
         }, Unmanaged.passUnretained(deadline).toOpaque())
       defer { sqlite3_progress_handler(db.handle, 0, nil, nil) }
       let values = try db.rows(
-        "SELECT body,segment FROM app_buckets WHERE epoch=? AND start>=? AND start<? AND (? IS NULL OR app_id=?) ORDER BY start DESC,\(sortExpression) DESC,app_id LIMIT ? OFFSET ?",
+        "SELECT body,segment FROM app_buckets WHERE epoch=? AND start>? AND start<? AND (? IS NULL OR app_id=?) ORDER BY start DESC,\(sortExpression) DESC,app_id LIMIT ? OFFSET ?",
         [
-          .string(captured), .number(from), .number(to), appId.map(JSONValue.string) ?? .null,
+          .string(captured), .number(from - 300), .number(to), appId.map(JSONValue.string) ?? .null,
           appId.map(JSONValue.string) ?? .null, .number(Double(limit + 1)),
           .number(Double(pageOffset)),
         ], limit: limit + 1)
@@ -491,77 +491,78 @@ public final class HistoryDatabase: @unchecked Sendable {
   }
   public func control(_ command: String) async throws -> JSONValue {
     if command == "clear" {
-      state.withLock { $0.resetting = true }
+      try state.withLock {
+        guard !$0.resetting else { throw APIError(503, "historyResetting") }
+        $0.resetting = true
+      }
       if let db { sqlite3_interrupt(db.handle) }
     }
-    defer { if command == "clear" { state.withLock { $0.resetting = false } } }
-    try await work { [self] db in
-      switch command {
-      case "pause":
-        try flush(before: .infinity, db: db)
-        try flushApps(db, epoch: epoch, segment: segment)
-        appSummary.removeAll()
-        appLimitReached = false
-        appWindow = nil
-        try db.run("UPDATE control SET enabled=0 WHERE id=1")
-        state.withLock {
-          $0.enabled = false
-          $0.writeGeneration += 1
-          $0.segment = UUID().uuidString
+    do {
+      try await work { [self] db in
+        switch command {
+        case "pause":
+          try flush(before: .infinity, db: db)
+          try flushApps(db, epoch: epoch, segment: segment)
+          appSummary.removeAll()
+          appLimitReached = false
+          appWindow = nil
+          try db.run("UPDATE control SET enabled=0 WHERE id=1")
+          state.withLock {
+            $0.enabled = false
+            $0.writeGeneration += 1
+            $0.segment = UUID().uuidString
+          }
+        case "resume":
+          try db.run("UPDATE control SET enabled=1 WHERE id=1")
+          buckets.removeAll()
+          state.withLock {
+            $0.enabled = true
+            $0.writeGeneration += 1
+            $0.error = nil
+            $0.segment = UUID().uuidString
+          }
+        case "clear":
+          buckets.removeAll()
+          appSummary.removeAll()
+          appLimitReached = false
+          appWindow = nil
+          try db.transaction {
+            try db.run(
+              "UPDATE control SET epoch=epoch+1,cleared_at=? WHERE id=1",
+              [.number(Date().timeIntervalSince1970)])
+          }
+          let newEpoch =
+            try db.rows("SELECT CAST(epoch AS TEXT) AS epoch FROM control").first?["epoch"]?.string
+            ?? ""
+          state.withLock {
+            $0.epoch = newEpoch
+            $0.writeGeneration += 1
+            $0.segment = UUID().uuidString
+          }
+          recent.clear()
+          scheduleReclaim()
+        default: throw APIError(400, "invalidCommand")
         }
-      case "resume":
-        try db.run("UPDATE control SET enabled=1 WHERE id=1")
-        buckets.removeAll()
-        state.withLock {
-          $0.enabled = true
-          $0.writeGeneration += 1
-          $0.error = nil
-          $0.segment = UUID().uuidString
-        }
-      case "clear":
-        buckets.removeAll()
-        appSummary.removeAll()
-        appLimitReached = false
-        appWindow = nil
-        try db.transaction {
-          try db.run(
-            "UPDATE control SET epoch=epoch+1,cleared_at=? WHERE id=1",
-            [.number(Date().timeIntervalSince1970)])
-        }
-        let newEpoch =
-          try db.rows("SELECT CAST(epoch AS TEXT) AS epoch FROM control").first?["epoch"]?.string
-          ?? ""
-        state.withLock {
-          $0.epoch = newEpoch
-          $0.writeGeneration += 1
-          $0.segment = UUID().uuidString
-        }
-        recent.clear()
-        scheduleReclaim()
-      default: throw APIError(400, "invalidCommand")
       }
+    } catch {
+      if command == "clear" { state.withLock { $0.resetting = false } }
+      throw error
     }
-    if command == "clear" { state.withLock { $0.resetting = false } }
     return status()
   }
   private func scheduleReclaim() {
-    queue.asyncAfter(deadline: .now() + 1) { [self] in
+    queue.async { [self] in
+      defer { state.withLock { $0.resetting = false } }
       guard let db else { return }
       do {
         try db.transaction {
-          try db.run(
-            "DELETE FROM buckets WHERE (epoch,segment,series,res,start) IN (SELECT epoch,segment,series,res,start FROM buckets WHERE epoch<>? LIMIT 512)",
-            [.string(epoch)])
-          try db.run(
-            "DELETE FROM app_buckets WHERE (epoch,segment,start,app_id) IN (SELECT epoch,segment,start,app_id FROM app_buckets WHERE epoch<>? LIMIT 64)",
-            [.string(epoch)])
+          try db.run("DELETE FROM buckets WHERE epoch<>?", [.string(epoch)])
+          try db.run("DELETE FROM app_buckets WHERE epoch<>?", [.string(epoch)])
         }
-        let remains =
-          try db.rows("SELECT 1 AS old FROM buckets WHERE epoch<>? LIMIT 1", [.string(epoch)])
-          .isEmpty == false
-          || db.rows("SELECT 1 AS old FROM app_buckets WHERE epoch<>? LIMIT 1", [.string(epoch)])
-            .isEmpty == false
-        if remains { scheduleReclaim() } else { try db.checkpoint() }
+        try db.checkpoint()
+        try db.exec("VACUUM")
+        try db.checkpoint()
+        state.withLock { $0.error = nil }
       } catch { state.withLock { $0.error = "historyCleanupFailed" } }
     }
   }

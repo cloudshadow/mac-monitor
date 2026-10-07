@@ -48,5 +48,9 @@
   "installUpdate": "安装更新",
   "installingUpdate": "正在下载并安装更新… macOS 可能会请求管理员授权。",
   "updateInstallFailed": "安装更新失败：{reason}",
-  "updateRestartFailed": "更新已安装，但无法重新打开应用：{reason}。请重新打开 Mac Monitor。"
+  "updateRestartFailed": "更新已安装，但无法重新打开应用：{reason}。请重新打开 Mac Monitor。",
+  "savedData": "保存的数据：{size}",
+  "historyData": "其中历史数据：{size}",
+  "cleaningData": "正在清理历史并回收空间…",
+  "clearHelp": "删除所有监控历史并回收磁盘空间。账户、设置、证书和记录开关保持不变。"
 }
