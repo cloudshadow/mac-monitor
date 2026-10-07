@@ -18,5 +18,6 @@
   "unsupported": "Not supported",
   "permissionDenied": "Permission denied",
   "powerOrThermalConstraint": "Reduced sampling for power or thermal conditions",
-  "online": "Online"
+  "online": "Online",
+  "close": "Close"
 }

@@ -34,6 +34,7 @@ export interface MessageParameters {
   "common:permissionDenied": {};
   "common:powerOrThermalConstraint": {};
   "common:online": {};
+  "common:close": {};
   "dashboard:cpu": {};
   "dashboard:memory": {};
   "dashboard:swap": {};

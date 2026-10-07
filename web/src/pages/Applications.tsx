@@ -1,5 +1,6 @@
+import { showError } from "../components/ErrorToast";
 import { useEffect, useRef, useState } from "react";
-import { useI18n, errorMessage } from "../i18n";
+import { useI18n } from "../i18n";
 import { useMetrics } from "../store/metrics";
 import { api, APIError } from "../store/api";
 export function Applications() {
@@ -9,7 +10,6 @@ export function Applications() {
     [query, setQuery] = useState(""),
     [cursor, setCursor] = useState<string | undefined>(),
     [table, setTable] = useState<Record<string, any>>({ rows: [] }),
-    [error, setError] = useState(""),
     [members, setMembers] = useState<Record<string, any> | undefined>(),
     inflight = useRef(false),
     latest = useRef<(() => void) | undefined>(undefined),
@@ -34,12 +34,11 @@ export function Applications() {
         .then((result) => {
           if (alive && id === revision.current) {
             setTable(result);
-            setError("");
           }
         })
         .catch((e) => {
           if (alive)
-            setError(e instanceof APIError ? e.code : "serviceUnavailable");
+            showError(e);
         })
         .finally(() => {
           inflight.current = false;
@@ -66,7 +65,7 @@ export function Applications() {
         appId: id,
       });
     } catch (e) {
-      setError(e instanceof APIError ? e.code : "serviceUnavailable");
+      showError(e);
     }
   }
   return (
@@ -188,7 +187,6 @@ export function Applications() {
           )}
         </details>
       )}
-      {error && <p role="alert">{errorMessage(error)}</p>}
     </section>
   );
 }

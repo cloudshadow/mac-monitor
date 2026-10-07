@@ -1,6 +1,7 @@
+import { showError } from "../components/ErrorToast";
 import { useState, type FormEvent } from "react";
-import { api, setCSRF, APIError } from "../store/api";
-import { useI18n, errorMessage } from "../i18n";
+import { api, setCSRF } from "../store/api";
+import { useI18n } from "../i18n";
 export function Authentication({
   status,
   ticket,
@@ -13,13 +14,11 @@ export function Authentication({
   const { t } = useI18n(),
     [username, setUsername] = useState(""),
     [password, setPassword] = useState(""),
-    [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   const setup = status === "setupRequired";
   async function submit(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
-    setError("");
     try {
       const result = await api(setup ? "/auth/setup" : "/auth/login", {
         method: "POST",
@@ -29,7 +28,7 @@ export function Authentication({
       setPassword("");
       onLogin();
     } catch (e) {
-      setError(e instanceof APIError ? e.code : "serviceUnavailable");
+      showError(e);
     } finally {
       setBusy(false);
     }
@@ -68,7 +67,6 @@ export function Authentication({
           <button disabled={busy}>{t("auth:submit")}</button>
         </form>
       )}
-      {error && <p role="alert">{errorMessage(error)}</p>}
     </section>
   );
 }

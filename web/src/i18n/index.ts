@@ -92,6 +92,9 @@ export async function selectLanguage(
 export async function ensureNamespaces(namespaces: string[]) {
   return selectLanguage(requestedLanguage, namespaces);
 }
+export function namespacesReady(namespaces: string[]) {
+  return namespaces.every(ns => dictionaries[ns] || english[ns]);
+}
 export function translate<K extends MessageKey>(
   key: K,
   ...args: keyof MessageParameters[K] extends never

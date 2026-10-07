@@ -13,24 +13,24 @@ A lightweight macOS monitoring app with a native controller and a responsive web
 
 macOS 14 or later. Apple Silicon is the target platform; the Intel package is available for development testing. No Node.js, Homebrew or other development tools are needed to use the app.
 
-The current version is a prerelease. Sensor availability varies by Mac model and drive connection.
+Sensor availability varies by Mac model and drive connection.
 
-## Install the prerelease
+## Install
 
-Download and install [v0.1.8](https://github.com/cloudshadow/mac-monitor/releases/tag/v0.1.8) with the commands below. Run them in Terminal using your regular macOS account; the installer selects your architecture, verifies checksums and requests administrator authorization.
+Download and install [v0.1.9](https://github.com/cloudshadow/mac-monitor/releases/tag/v0.1.9) with the commands below. Run them in Terminal using your regular macOS account; the installer selects your architecture, verifies checksums and requests administrator authorization.
 
 ```bash
 (
   set -e
   cd "$HOME"
-  curl -fL https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.8/install.sh -o install-0.1.8.sh
-  echo "42ed04b1e15b6a87ad68d1439753a66004720c971235aba225a591c029f7969f  install-0.1.8.sh" | shasum -a 256 -c -
+  curl -fL https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.9/install.sh -o install-0.1.9.sh
+  echo "42ed04b1e15b6a87ad68d1439753a66004720c971235aba225a591c029f7969f  install-0.1.9.sh" | shasum -a 256 -c -
   case "$(uname -m)" in
-    arm64) checksum=7792c66db770690ea1ed470d84b2309542babb43d0ddc9560d4523d88cfbbcbe ;;
-    x86_64) checksum=359cd8ed5dec4f8a650b4e0432f7005c880e10f034b2485b2d2e20056d13da13 ;;
+    arm64) checksum=80db44367dc2bac74c1ab53694b4e82624977e21d7c6b061ad48fbe56ec8d05e ;;
+    x86_64) checksum=23f9592320f60353992276ce2657f5ef0cec1bbe134138b2dc71dac6361c9792 ;;
     *) echo "Unsupported architecture"; exit 1 ;;
   esac
-  bash install-0.1.8.sh 0.1.8 https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.8 "$checksum"
+  bash install-0.1.9.sh 0.1.9 https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.9 "$checksum"
 )
 ```
 

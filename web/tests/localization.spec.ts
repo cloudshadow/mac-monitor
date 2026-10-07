@@ -156,12 +156,16 @@ test("temperature readings and unavailable external drives fit a phone", async (
 });
 
 test("reload updates dashboard labels after delayed translations arrive", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 800 });
   await page.addInitScript(() => {
     localStorage.setItem("language", "zh-Hans");
     (window as any).translationErrors = [];
     new MutationObserver(() => {
-      if (document.querySelector("main")?.textContent?.includes("操作失败，请重试。"))
+      const text = document.querySelector("main")?.textContent ?? "";
+      if (text.includes("操作失败，请重试。"))
         (window as any).translationErrors.push("missing translation");
+      if ((text.match(/Loading…|加载中|載入中/g) ?? []).length > 1)
+        (window as any).translationErrors.push("repeated loading labels");
     }).observe(document, { childList: true, subtree: true, characterData: true });
   });
   await page.route("**/locales/*/dashboard.json", async route => {
@@ -188,6 +192,59 @@ test("reload updates dashboard labels after delayed translations arrive", async 
   await expect(page.locator(".metric h2").first()).toHaveText("CPU %", { timeout: 5000 });
   await expect(page.locator("main")).not.toContainText("操作失败，请重试。");
   expect(await page.evaluate(() => (window as any).translationErrors)).toEqual([]);
+});
+
+test("phone errors use one visible toast that can close and expires", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.clock.install();
+  let authenticated = false;
+  await page.route("**/api/v1/**", async route => {
+    const pathname = new URL(route.request().url()).pathname;
+    if (pathname.endsWith("/events")) {
+      await route.fulfill({ contentType: "text/event-stream", body: ": connected\n\n" });
+      return;
+    }
+    if (pathname.endsWith("/auth/login") && !authenticated) {
+      await route.fulfill({ status: 401, json: { error: { code: "invalidCredentials" } } });
+      return;
+    }
+    if (pathname.endsWith("/recent/system") || pathname.endsWith("/apps") || pathname.endsWith("/history/system")) {
+      await route.fulfill({ status: 503, json: { error: { code: "serviceUnavailable" } } });
+      return;
+    }
+    const body = pathname.endsWith("/auth/status") ? { status: "loginRequired" }
+      : pathname.endsWith("/auth/session") || pathname.endsWith("/auth/login") ? { csrfToken: "fixture" }
+      : pathname.endsWith("/snapshot") ? { thermalState: 0, sensors: [] }
+      : pathname.endsWith("/viewers") ? { viewerId: "fixture" } : { rows: [] };
+    await route.fulfill({ json: body });
+  });
+  await page.goto(base);
+  await page.getByLabel("Username", { exact: true }).fill("browser-owner");
+  await page.getByLabel("Password (12–128 characters)", { exact: true }).fill("bad-password");
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await expect(page.getByRole("alert")).toHaveCount(1);
+  await expect(page.locator("main [role=alert]")).toHaveCount(0);
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  authenticated = true;
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await expect(page.locator(".overview-grid")).toBeVisible();
+  await page.clock.runFor(500);
+  await expect(page.getByRole("alert")).toHaveCount(1);
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  const bounds = await page.getByRole("alert").boundingBox();
+  expect(bounds!.y).toBeGreaterThanOrEqual(0);
+  expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(800);
+  expect(bounds!.x).toBeGreaterThanOrEqual(0);
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(360);
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByRole("button", { name: "Applications", exact: true }).click();
+  await expect(page.getByRole("alert")).toHaveCount(1);
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByRole("button", { name: "History", exact: true }).click();
+  await expect(page.getByRole("alert")).toHaveCount(1);
+  await page.clock.runFor(6100);
+  await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
 test("dark dashboard fills desktop and keeps every page within mobile viewports", async ({ page }) => {

@@ -1,7 +1,8 @@
+import { showError } from "../components/ErrorToast";
 import { useEffect, useState } from "react";
-import { useI18n, errorMessage } from "../i18n";
+import { useI18n } from "../i18n";
 import { useMetrics } from "../store/metrics";
-import { api, APIError } from "../store/api";
+import { api } from "../store/api";
 import { Temperatures } from "../components/Temperatures";
 import { MetricChart, type ChartSample } from "../components/MetricChart";
 import { DashboardIcon } from "../components/DashboardIcon";
@@ -10,9 +11,7 @@ export function Overview() {
     { snapshot, receivedAt, appsSequence } = useMetrics(),
     [points, setPoints] = useState<ChartSample[]>([]),
     [live, setLive] = useState<Record<string, ChartSample[]>>({}),
-    [topApps, setTopApps] = useState<Record<string, any>[][]>([[], []]),
-    [appsError, setAppsError] = useState(""),
-    [error, setError] = useState("");
+    [topApps, setTopApps] = useState<Record<string, any>[][]>([[], []]);
   useEffect(() => {
     setPoints([]);
     let alive = true,
@@ -31,11 +30,10 @@ export function Overview() {
           );
         if (alive) {
           setPoints((result.series?.["cpu.total"] ?? []).map((p: any) => ({ time: p.bucketEndUtc, value: p.avg })));
-          setError("");
         }
       } catch (e) {
         if (alive)
-          setError(e instanceof APIError ? e.code : "serviceUnavailable");
+          showError(e);
       } finally {
         inflight = false;
       }
@@ -66,8 +64,8 @@ export function Overview() {
     let alive = true;
     const timer = setTimeout(() => {
       void Promise.all([api("/apps?sort=cpu&limit=5"), api("/apps?sort=memory&limit=5")]).then(results => {
-        if (alive) { setTopApps(results.map(r => r.rows ?? [])); setAppsError(""); }
-      }).catch(e => { if (alive) setAppsError(e instanceof APIError ? e.code : "serviceUnavailable"); });
+        if (alive) { setTopApps(results.map(r => r.rows ?? [])); }
+      }).catch(e => { if (alive) showError(e); });
     }, 300);
     return () => { alive = false; clearTimeout(timer); };
   }, [appsSequence]);
@@ -143,11 +141,9 @@ export function Overview() {
             {rows.map((row, rank) => <tr key={row.id}><td>{rank + 1}</td><td title={row.name}>{row.name}</td><td>{index ? bytes(row.physicalFootprintBytes) : typeof row.cpuPercentCore === "number" ? number(row.cpuPercentCore, { maximumFractionDigits: 1 }) + "%" : t("common:unknown")}</td></tr>)}
           </tbody></table></div>
           {!rows.length && <small>{t("dashboard:noApps")}</small>}
-          {appsError && <p role="alert">{errorMessage(appsError)}</p>}
         </section>)}
       </div>
       <p className="dashboard-footnote">{t("dashboard:recent")} · {t("dashboard:liveTrendHelp")}{snapshot.sampledAt && <> · {t("dashboard:sampled", { time: date(snapshot.sampledAt) })}</>}{receivedAt === 0 && <> · {t("common:loading")}</>}</p>
-      {error && <p role="alert">{errorMessage(error)}</p>}
       </div>
       <div className="overview-secondary">
       <section className="card memory-composition">

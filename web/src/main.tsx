@@ -6,10 +6,11 @@ import {
   preferredLanguage,
   ensureNamespaces,
   useI18n,
-  errorMessage,
+  namespacesReady,
 } from "./i18n";
 import type { Language } from "./i18n/generated/registry";
-import { api, setCSRF, APIError } from "./store/api";
+import { api, setCSRF } from "./store/api";
+import { ErrorToast, showError } from "./components/ErrorToast";
 import { startConnection, stopConnection, useMetrics } from "./store/metrics";
 import { Authentication } from "./pages/Authentication";
 import { Overview } from "./pages/Overview";
@@ -24,7 +25,6 @@ function App() {
   const { t, language } = useI18n(),
     [status, setStatus] = useState("loading"),
     [page, setPage] = useState("overview"),
-    [error, setError] = useState(""),
     [ready, setReady] = useState(false),
     [age, setAge] = useState(0),
     metrics = useMetrics();
@@ -38,12 +38,12 @@ function App() {
       }
       setStatus(result.status);
     } catch (e) {
-      setError(e instanceof APIError ? e.code : "serviceUnavailable");
+      showError(e);
       setStatus("offline");
     }
   }
   useEffect(() => {
-    void selectLanguage(preferredLanguage(), ["auth"])
+    void selectLanguage(preferredLanguage(), ["auth", "settings"])
       .then(() => setReady(true))
       .catch(() => setReady(true));
     void restore();
@@ -65,9 +65,7 @@ function App() {
         : page === "applications"
           ? "apps"
           : page;
-    void ensureNamespaces([ns, "auth", "settings"]).catch(() =>
-      setError("serviceUnavailable"),
-    );
+    void ensureNamespaces([ns, "dashboard", "auth", "settings"]).catch(showError);
   }, [page, status, ready]);
   useEffect(() => {
     const timer = setInterval(
@@ -89,7 +87,7 @@ function App() {
       setCSRF("");
       setStatus("loginRequired");
     } catch (e) {
-      setError(e instanceof APIError ? e.code : "serviceUnavailable");
+      showError(e);
     }
   }
   if (!ready) return <main>Mac Monitor…</main>;
@@ -128,9 +126,7 @@ function App() {
           aria-label={t("settings:language")}
           value={language}
           onChange={(e) =>
-            void selectLanguage(e.target.value as Language).catch(() =>
-              setError("serviceUnavailable"),
-            )
+            void selectLanguage(e.target.value as Language).catch(showError)
           }
         >
           {languages.map((l) => (
@@ -153,7 +149,9 @@ function App() {
               </p>
             )}
             {age > Math.max(15, (metrics.snapshot.samplingPolicy?.intervalMs ?? 10000) / 1000 * 2) && <p className="notice">{t("common:stale")}</p>}
-            {page === "overview" ? (
+            {!namespacesReady([page === "overview" ? "dashboard" : page === "applications" ? "apps" : "history", "dashboard"]) ? (
+              <p role="status">{t("common:loading")}</p>
+            ) : page === "overview" ? (
               <Overview />
             ) : page === "applications" ? (
               <Applications />
@@ -175,9 +173,8 @@ function App() {
             }}
           />
         )}
-        {error && <p role="alert">{errorMessage(error)}</p>}
       </main>
     </>
   );
 }
-createRoot(document.getElementById("root")!).render(<App />);
+createRoot(document.getElementById("root")!).render(<><App /><ErrorToast /></>);

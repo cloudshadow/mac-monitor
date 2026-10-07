@@ -1,7 +1,8 @@
+import { showError } from "../components/ErrorToast";
 import { useEffect, useRef, useState } from "react";
 import { useMetrics } from "../store/metrics";
-import { useI18n, errorMessage } from "../i18n";
-import { api, APIError } from "../store/api";
+import { useI18n } from "../i18n";
+import { api } from "../store/api";
 import { sensorName, showSensor } from "../components/Temperatures";
 import { TimeSeries, type Point } from "../components/TimeSeries";
 export function History() {
@@ -12,7 +13,6 @@ export function History() {
     [seriesId, setSeriesId] = useState("cpu.total"),
     [result, setResult] = useState<Record<string, any>>(),
     [apps, setApps] = useState<Record<string, any>>(),
-    [error, setError] = useState(""),
     [refresh, setRefresh] = useState(0);
   const currentEpoch = useRef(epoch),
     appRange = useRef({ from: 0, to: 0 }),
@@ -32,7 +32,6 @@ export function History() {
     let alive = true;
     setResult(undefined);
     setApps(undefined);
-    setError("");
     const now = Date.now() / 1000,
       params = new URLSearchParams({
         from: String(now - range),
@@ -47,7 +46,7 @@ export function History() {
       })
       .catch((e) => {
         if (alive)
-          setError(e instanceof APIError ? e.code : "serviceUnavailable");
+          showError(e);
       });
     if (range <= 7 * 86400)
       void api(
@@ -81,7 +80,7 @@ export function History() {
         setApps(page);
     } catch (error) {
       if (revision === requestRevision.current)
-        setError(error instanceof APIError ? error.code : "serviceUnavailable");
+        showError(error);
     }
   }
   return (
@@ -167,7 +166,6 @@ export function History() {
           {t("common:next")}
         </button>
       )}
-      {error && <p role="alert">{errorMessage(error)}</p>}
     </section>
   );
 }
