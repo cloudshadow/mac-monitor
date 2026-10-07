@@ -275,7 +275,7 @@ main { padding: 20px clamp(16px, 1.6vw, 28px); }
   #root:has(.overview-main) > header { flex-shrink: 0; }
   .overview-main { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; padding: 12px 20px; }
   .overview-main > .notice { flex-shrink: 0; margin: 0; padding: 8px 12px; font-size: 12px; }
-  .overview-grid { flex: 1; min-height: 0; grid-template-rows: clamp(110px, 15vh, 145px) minmax(0, 1fr); gap: 12px; align-items: stretch; }
+  .overview-grid { flex: 1; min-height: 0; grid-template-rows: clamp(110px, 15vh, 145px) minmax(0, 1.3fr) auto minmax(0, 1fr) minmax(0, 1.6fr) auto; gap: 12px; align-items: stretch; }
   .overview-grid .card { min-height: 0; padding: 12px 14px; }
   .overview-metrics { min-height: 0; gap: 12px; }
   .overview-metrics .metric { min-height: 0; padding-left: 62px; }
@@ -285,8 +285,11 @@ main { padding: 20px clamp(16px, 1.6vw, 28px); }
   .metric small.memory-formula { margin-top: 4px; }
   .metric-spark { height: 26px; margin-top: 6px; }
   .overhead-card strong { font-size: 22px; }
-  .overview-primary { min-height: 0; grid-template-rows: minmax(0, 1.5fr) minmax(0, .9fr) minmax(0, 1fr) auto; gap: 12px; }
-  .overview-secondary { min-height: 0; grid-template-rows: minmax(0, .85fr) auto minmax(0, 1.1fr) minmax(0, 1.6fr); gap: 12px; }
+  .overview-primary { min-height: 0; grid-column: 1; grid-row: 2 / -1; grid-template-rows: subgrid; gap: 12px; }
+  .overview-primary > .temperature-panel { grid-row: 1 / span 2; }
+  .overview-primary > .trend-grid { grid-row: 3; }
+  .overview-primary > .ranking-grid { grid-row: 4; }
+  .overview-secondary { min-height: 0; grid-column: 2; grid-row: 2 / -2; grid-template-rows: subgrid; gap: 12px; }
   .overview-grid h2 { margin-bottom: 8px; font-size: 12px; }
   .overview-grid h2 > svg { width: 19px; height: 19px; }
   .temperature-panel { min-height: 0; overflow: auto; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); grid-template-rows: auto minmax(90px, 1fr) auto auto; gap: 0 16px; }
@@ -334,7 +337,7 @@ main { padding: 20px clamp(16px, 1.6vw, 28px); }
   .overview-primary > .temperature-panel { align-self: stretch; height: 100%; }
 }
 @media (min-width: 1100px) and (min-height: 650px) and (max-height: 800px) {
-  .overview-primary { grid-template-rows: minmax(0, 1.2fr) minmax(0, .8fr) minmax(0, 1.15fr) auto; }
+  .overview-grid { grid-template-rows: clamp(110px, 15vh, 145px) minmax(0, 1.2fr) auto minmax(0, .8fr) minmax(0, 1.4fr) auto; }
   .ranking-card td, .ranking-card th { padding: 1px 8px; font-size: 10px; line-height: 1.2; }
 }
 @media (min-width: 1100px) and (min-height: 801px) {

@@ -34,9 +34,9 @@ mkdir -m 700 /private/tmp/mac-monitor-dev
 ## Package the app
 
 ```bash
-bash scripts/package-app.sh 0.1.10
-CMM_ARCH=arm64 bash scripts/package-app.sh 0.1.10
-CMM_ARCH=x86_64 bash scripts/package-app.sh 0.1.10
+bash scripts/package-app.sh 0.1.11
+CMM_ARCH=arm64 bash scripts/package-app.sh 0.1.11
+CMM_ARCH=x86_64 bash scripts/package-app.sh 0.1.11
 ```
 
 Packages and checksums are written to `artifacts/`; app bundles are under `artifacts/package/<arch>/`. Cross-compilation does not replace runtime testing on the target architecture.

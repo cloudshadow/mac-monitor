@@ -389,6 +389,12 @@ test("dark dashboard fills desktop and keeps every page within mobile viewports"
     await expect(page.locator(".ranking-card").first().locator("tbody tr")).toHaveCount(5);
     for (const table of await page.locator(".ranking-card .table-scroll").all()) expect(await table.evaluate(el => el.scrollHeight - el.clientHeight), "all five ranking rows fit").toBeLessThanOrEqual(1);
     expect(await page.evaluate(() => document.documentElement.scrollHeight), `desktop fits ${viewport.width}x${viewport.height}`).toBeLessThanOrEqual(viewport.height);
+    const throughput = await page.locator(".io-card").boundingBox();
+    for (const ranking of await page.locator(".ranking-card").all()) {
+      const bounds = await ranking.boundingBox();
+      expect(Math.abs(throughput!.y - bounds!.y), "throughput and rankings share their top edge").toBeLessThanOrEqual(1);
+      expect(Math.abs(throughput!.y + throughput!.height - bounds!.y - bounds!.height), "throughput and rankings share their bottom edge").toBeLessThanOrEqual(1);
+    }
     for (const selector of [".overview-metrics", ".temperature-panel", ".trend-grid", ".ranking-grid", ".memory-composition", ".memory-card", ".io-card"]) {
       const rect = await page.locator(selector).evaluate(el => ({ top: el.getBoundingClientRect().top, bottom: el.getBoundingClientRect().bottom }));
       expect(rect.top).toBeGreaterThanOrEqual(0);
