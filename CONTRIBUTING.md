@@ -22,6 +22,8 @@ python3 scripts/port-smoke.py
 python3 scripts/lan-smoke.py
 ```
 
+For mobile Safari layout checks, install Playwright's WebKit with `cd web && npx playwright install webkit`, then run `npm --prefix web test -- --config playwright.mobile.config.ts` from the repository root.
+
 ## Run a development instance
 
 ```bash
@@ -34,9 +36,9 @@ mkdir -m 700 /private/tmp/mac-monitor-dev
 ## Package the app
 
 ```bash
-bash scripts/package-app.sh 0.1.11
-CMM_ARCH=arm64 bash scripts/package-app.sh 0.1.11
-CMM_ARCH=x86_64 bash scripts/package-app.sh 0.1.11
+bash scripts/package-app.sh 0.1.12
+CMM_ARCH=arm64 bash scripts/package-app.sh 0.1.12
+CMM_ARCH=x86_64 bash scripts/package-app.sh 0.1.12
 ```
 
 Packages and checksums are written to `artifacts/`; app bundles are under `artifacts/package/<arch>/`. Cross-compilation does not replace runtime testing on the target architecture.

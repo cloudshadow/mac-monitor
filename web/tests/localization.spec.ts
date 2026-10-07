@@ -302,6 +302,7 @@ test("dark dashboard fills desktop and keeps every page within mobile viewports"
     { id: "hid:PMU tcal", label: "PMU tcal", metric: { value: 98, status: "ok" } },
     { id: "hid:PMU unknown", label: "PMU unknown", metric: { value: 99, status: "ok" } },
   ];
+  sensors.push({ id: "hid:long", label: "ExternalSensor_" + "0123456789".repeat(12), metric: { value: 60, status: "ok" }, seriesId: "temperature.long" });
   const points = [{ bucketStartUtc: 1, bucketEndUtc: 2, avg: 15 }, { bucketStartUtc: 2, bucketEndUtc: 3, avg: 30 }];
   await page.route("**/api/v1/**", async route => {
     const pathname = new URL(route.request().url()).pathname;
@@ -313,11 +314,11 @@ test("dark dashboard fills desktop and keeps every page within mobile viewports"
       : pathname.endsWith("/auth/session") ? { csrfToken: "fixture" }
       : pathname.endsWith("/snapshot") ? { sensors, thermalState: 0, cpu: { value: 34, status: "ok" }, nonIdlePercent: { value: 65, status: "ok" }, appWiredPercent: { value: 45, status: "ok" }, appMemoryBytes: 5 * 1024 ** 3, wiredBytes: 2.2 * 1024 ** 3, compressorBytes: 1024 ** 3, serviceOverhead: { cpuPercentCore: 0.25, physicalFootprintBytes: 32 * 1048576 }, networkInterfaces: [{ id: "en0", receivedBytesPerSecond: { value: 10 }, sentBytesPerSecond: { value: 20 } }, { id: "en8", receivedBytesPerSecond: { value: 30 }, sentBytesPerSecond: { value: 40 } }], swapUsedBytes: { value: 128 * 1048576, status: "ok" }, gpu: { value: 15, status: "ok" }, physicalMemoryBytes: 16 * 1024 ** 3, freeBytes: 3 * 1024 ** 3 }
       : pathname.endsWith("/viewers") ? { viewerId: "fixture" }
-      : pathname.endsWith("/recent/system") || pathname.endsWith("/history/system") ? { series: { "cpu.total": points }, recordingStatus: { enabled: true } }
-      : pathname.endsWith("/history/apps") ? { rows: [] }
+      : pathname.endsWith("/recent/system") || pathname.endsWith("/history/system") ? { series: { [new URL(route.request().url()).searchParams.get("seriesIds") ?? "cpu.total"]: points }, recordingStatus: { enabled: true } }
+      : pathname.endsWith("/history/apps") ? { rows: [{ id: "history-app", name: "com.example." + "HistoryApplication".repeat(12), cpuPercentCore: 123.4, selectedBy: ["cpu"] }] }
       : pathname.endsWith("/history/status") ? { diskBytes: 1048576 }
-      : pathname.endsWith("/apps") ? { rows: [{ id: "app", name: "A very long application name that should wrap inside its table column", cpuPercentCore: 123.4, physicalFootprintBytes: 1234567890, diskReadBytesPerSecond: 23456789, diskWriteBytesPerSecond: 34567890 }], coverage: { readable: 1, attempted: 1 } }
-      : pathname.endsWith("/processes") ? { rows: [{ processKey: "process", name: "A very long process name", pid: 1234, cpuPercentCore: 100 }] } : {};
+      : pathname.endsWith("/apps") ? { rows: [{ id: "app", name: "com.example." + "Application".repeat(12), cpuPercentCore: 123.4, physicalFootprintBytes: 1234567890, diskReadBytesPerSecond: 23456789, diskWriteBytesPerSecond: 34567890 }], coverage: { readable: 1, attempted: 1 } }
+      : pathname.endsWith("/processes") ? { rows: [{ processKey: "process", name: "com.example." + "Process".repeat(12), pid: 1234, cpuPercentCore: 100 }] } : {};
     if (pathname.endsWith("/apps") && new URL(route.request().url()).searchParams.get("limit") === "5") body.rows = Array.from({ length: 5 }, (_, index) => ({ ...body.rows[0], id: "fixture-" + index }));
     await route.fulfill({ json: body });
   });
@@ -354,7 +355,7 @@ test("dark dashboard fills desktop and keeps every page within mobile viewports"
   await expect(page.locator(".trend-card")).toHaveCount(3);
   await expect(page.locator(".ranking-card")).toHaveCount(2);
   await expect(page.locator(".memory-bar span")).toHaveCount(4);
-  for (const width of [320, 390, 768, 1440, 1920]) {
+  for (const width of [280, 320, 390, 768, 1440, 1920]) {
     await page.setViewportSize({ width, height: 900 });
     expect(await page.locator(".brand").evaluate(el => Boolean(el.compareDocumentPosition(document.querySelector("header nav")!) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
     if (width > 1000) {
@@ -365,15 +366,25 @@ test("dark dashboard fills desktop and keeps every page within mobile viewports"
     for (const name of ["概览", "应用", "历史"]) {
       await page.getByRole("button", { name, exact: true }).click();
       await expect(page.locator("main")).not.toContainText("操作失败，请重试。");
+      if (name === "概览") {
+        await page.locator(".sensor-foldouts > details").last().locator("summary").click();
+        await expect(page.locator(".sensor-foldouts > details").last()).toHaveAttribute("open", "");
+      }
       expect(await page.evaluate(() => document.documentElement.scrollWidth), `${name} at ${width}px`).toBeLessThanOrEqual(width);
       expect(await page.locator("main").evaluate(el => el.getBoundingClientRect().width)).toBe(width);
       if (name === "应用") {
         await expect(page.locator("tbody tr")).toHaveCount(1);
+        await page.locator(".link").first().click();
+        await expect(page.locator("main details p")).toContainText("com.example.Process");
+        expect(await page.evaluate(() => document.documentElement.scrollWidth), `process details at ${width}px`).toBeLessThanOrEqual(width);
         if (width <= 390) expect(await page.locator(".table-scroll").evaluate(el => el.scrollWidth > el.clientWidth)).toBe(true);
       }
       if (name === "历史") {
         await expect(page.locator("canvas")).toBeVisible();
         await expect(page.getByLabel("指标")).toContainText("PMU 芯片测点 1");
+        await page.getByLabel("指标").selectOption("temperature.long");
+        await expect(page.locator("main h2")).toContainText("ExternalSensor_");
+        expect(await page.evaluate(() => document.documentElement.scrollWidth), `long sensor heading at ${width}px`).toBeLessThanOrEqual(width);
       }
     }
     await page.getByRole("button", { name: "概览", exact: true }).click();
@@ -419,12 +430,22 @@ test("dark sign-in form fits a narrow phone and landscape viewport", async ({ pa
   await page.route("**/api/v1/auth/status", route => route.fulfill({ json: { status: "loginRequired" } }));
   await page.goto(base);
   await page.locator("header select").selectOption("zh-Hans");
-  for (const viewport of [{ width: 320, height: 640 }, { width: 390, height: 844 }, { width: 844, height: 390 }]) {
+  for (const viewport of [{ width: 280, height: 640 }, { width: 320, height: 640 }, { width: 390, height: 844 }, { width: 844, height: 390 }]) {
     await page.setViewportSize(viewport);
-    await expect(page.getByRole("heading", { name: "登录", exact: true })).toBeVisible();
-    await page.getByLabel("用户名", { exact: true }).fill("mobile-owner");
-    await page.getByLabel("密码（12–128 字符）", { exact: true }).fill("mobile-password-12345");
-    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
-    expect(await page.getByLabel("用户名", { exact: true }).evaluate(el => el.getBoundingClientRect().width)).toBeGreaterThan(200);
+    for (const language of ["en", "zh-Hant", "zh-Hans"]) {
+      await page.locator("header select").selectOption(language);
+      await expect(page.locator(".auth h1")).toBeVisible();
+      await page.locator('.auth input[autocomplete="username"]').fill("mobile-owner".repeat(4));
+      await page.locator('.auth input[type="password"]').fill("mobile-password-12345".repeat(6));
+      expect(await page.evaluate(() => document.documentElement.scrollWidth), `${language} sign-in at ${viewport.width}px`).toBeLessThanOrEqual(viewport.width);
+      const form = await page.locator(".auth form").boundingBox();
+      for (const control of await page.locator(".auth input, .auth button").all()) {
+        const bounds = await control.boundingBox();
+        expect(bounds!.width).toBeGreaterThan(200);
+        expect(bounds!.x).toBeGreaterThanOrEqual(form!.x);
+        expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(form!.x + form!.width);
+      }
+    }
+    if (viewport.width === 390) await page.screenshot({ path: "../artifacts/mobile-sign-in-390.png", fullPage: true });
   }
 });

@@ -17,20 +17,20 @@ Sensor availability varies by Mac model and drive connection.
 
 ## Install
 
-Download and install [v0.1.11](https://github.com/cloudshadow/mac-monitor/releases/tag/v0.1.11) with the commands below. Run them in Terminal using your regular macOS account; the installer selects your architecture, verifies checksums and requests administrator authorization.
+Download and install [v0.1.12](https://github.com/cloudshadow/mac-monitor/releases/tag/v0.1.12) with the commands below. Run them in Terminal using your regular macOS account; the installer selects your architecture, verifies checksums and requests administrator authorization.
 
 ```bash
 (
   set -e
   cd "$HOME"
-  curl -fL https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.11/install.sh -o install-0.1.11.sh
-  echo "42ed04b1e15b6a87ad68d1439753a66004720c971235aba225a591c029f7969f  install-0.1.11.sh" | shasum -a 256 -c -
+  curl -fL https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.12/install.sh -o install-0.1.12.sh
+  echo "42ed04b1e15b6a87ad68d1439753a66004720c971235aba225a591c029f7969f  install-0.1.12.sh" | shasum -a 256 -c -
   case "$(uname -m)" in
-    arm64) checksum=0187c241ddbe6f0b0fb61e6395eb383bd5963199cf8d989adf09b4e9aa0799f6 ;;
-    x86_64) checksum=7e5b71b7f2020feedcf6e5ae6b004abab911bdf4a2134c28bfc91ff3816af947 ;;
+    arm64) checksum=69d1a87fb556e9f9748fdc18622c283a2d7b98c1ffe4fdb46a182ef24bdbf297 ;;
+    x86_64) checksum=7c5dd07bb50176a26428769833d729dc5202f71e0cda5691e4ded91fb7d844ea ;;
     *) echo "Unsupported architecture"; exit 1 ;;
   esac
-  bash install-0.1.11.sh 0.1.11 https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.11 "$checksum"
+  bash install-0.1.12.sh 0.1.12 https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.12 "$checksum"
 )
 ```
 
