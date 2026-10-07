@@ -1012,6 +1012,94 @@
           }
         }
       }
+    },
+    "installUpdate": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Install update"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安装更新"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安裝更新"
+          }
+        }
+      }
+    },
+    "installingUpdate": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Downloading and installing the update… macOS may ask for administrator authorization."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在下载并安装更新… macOS 可能会请求管理员授权。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在下載並安裝更新… macOS 可能會要求管理員授權。"
+          }
+        }
+      }
+    },
+    "updateInstallFailed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not install the update: %1$@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安装更新失败：%1$@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安裝更新失敗：%1$@"
+          }
+        }
+      }
+    },
+    "updateRestartFailed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The update was installed, but the app could not reopen: %1$@. Reopen Mac Monitor."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更新已安装，但无法重新打开应用：%1$@。请重新打开 Mac Monitor。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更新已安裝，但無法重新開啟應用程式：%1$@。請重新開啟 Mac Monitor。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

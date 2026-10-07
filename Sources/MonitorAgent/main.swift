@@ -15,7 +15,7 @@ while index < args.count {
   options[args[index]] = args[index + 1]
   index += 2
 }
-let root = options["--data-root"] ?? "/Library/Application Support/CloudMacMonitor/data"
+let root = options["--data-root"] ?? InstallationLayout.data
 let executable = URL(fileURLWithPath: CommandLine.arguments[0]).standardizedFileURL
 let web =
   options["--web-root"]

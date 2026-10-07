@@ -17,20 +17,20 @@ Sensor availability varies by Mac model and drive connection.
 
 ## Install
 
-Download and install [v0.1.12](https://github.com/cloudshadow/mac-monitor/releases/tag/v0.1.12) with the commands below. Run them in Terminal using your regular macOS account; the installer selects your architecture, verifies checksums and requests administrator authorization.
+Download and install [v0.1.13](https://github.com/cloudshadow/mac-monitor/releases/tag/v0.1.13) with the commands below. Run them in Terminal using your regular macOS account; the installer selects your architecture, verifies checksums and requests administrator authorization.
 
 ```bash
 (
   set -e
   cd "$HOME"
-  curl -fL https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.12/install.sh -o install-0.1.12.sh
-  echo "42ed04b1e15b6a87ad68d1439753a66004720c971235aba225a591c029f7969f  install-0.1.12.sh" | shasum -a 256 -c -
+  curl -fL https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.13/install.sh -o install-0.1.13.sh
+  echo "fc31842233e60d205e19c419fbd589e5f563c4da1ad0fda99cca4f9176365458  install-0.1.13.sh" | shasum -a 256 -c -
   case "$(uname -m)" in
-    arm64) checksum=69d1a87fb556e9f9748fdc18622c283a2d7b98c1ffe4fdb46a182ef24bdbf297 ;;
-    x86_64) checksum=7c5dd07bb50176a26428769833d729dc5202f71e0cda5691e4ded91fb7d844ea ;;
+    arm64) checksum=ddbd449435f72f43aba88b5c01fc7465b7fae367c1ebbad8670f66de4af8fee4 ;;
+    x86_64) checksum=5edd8d31c0304b8257a1051ed336d828d9a6ad4158abf50f1e5aa29bb6bf4f2d ;;
     *) echo "Unsupported architecture"; exit 1 ;;
   esac
-  bash install-0.1.12.sh 0.1.12 https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.12 "$checksum"
+  bash install-0.1.13.sh 0.1.13 https://github.com/cloudshadow/mac-monitor/releases/download/v0.1.13 "$checksum"
 )
 ```
 
@@ -55,7 +55,9 @@ The memory percentage uses `(App estimate + Wired) / total`, excluding compresse
 
 ## Update
 
-Choose **Check for updates** in the app and run the provided installation command. Updates preserve your account, history and service-start preferences.
+Choose **Check for updates**, then **Install update**. The app downloads and verifies the package, requests macOS administrator authorization, and reopens the updated app. Updates preserve your account, history and service-start preferences. Only stable releases are offered.
+
+Older app versions only provide an installation command; use that command once to upgrade to a version with in-app installation, then quit and reopen Mac Monitor.
 
 ## Development
 

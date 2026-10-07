@@ -220,6 +220,10 @@ export interface MessageParameters {
   "native:lanPortInUse": {"port": string};
   "native:portBindFailed": {"port": string};
   "native:portFallback": {"actual": string;"configured": string};
+  "native:installUpdate": {};
+  "native:installingUpdate": {};
+  "native:updateInstallFailed": {"reason": string};
+  "native:updateRestartFailed": {"reason": string};
   "settings:local": {};
   "settings:language": {};
   "settings:storage": {"size": string};

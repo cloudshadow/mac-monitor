@@ -1,12 +1,12 @@
 import Foundation
 
-struct AvailableUpdate: Sendable { let version: String, command: String }
+struct AvailableUpdate: Sendable { let version: String, command: String, releaseBase: String, checksum: String }
 enum UpdateCoordinator {
   static func isNewer(_ version: String, than current: String) -> Bool {
     version.compare(current, options: .numeric) == .orderedDescending
   }
   static func newestTag(in releases: [[String: Any]]) -> String? {
-    let tags = releases.filter { $0["draft"] as? Bool != true }.compactMap { $0["tag_name"] as? String }
+    let tags = releases.filter { $0["draft"] as? Bool != true && $0["prerelease"] as? Bool != true }.compactMap { $0["tag_name"] as? String }
       .filter { $0.range(of: "^v[0-9]+\\.[0-9]+\\.[0-9]+$", options: .regularExpression) != nil }
     return tags.max(by: { isNewer(String($1.dropFirst()), than: String($0.dropFirst())) })
   }
@@ -25,7 +25,7 @@ enum UpdateCoordinator {
     guard (response as? HTTPURLResponse)?.statusCode == 200, data.count < 2_097_152,
       let releases = try JSONSerialization.jsonObject(with: data) as? [[String: Any]]
     else { throw NSError(domain: "Update", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid release response (HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0))"]) }
-    // This project publishes prereleases; /releases/latest excludes them.
+    // Automatic updates only offer published stable releases.
     guard let tag = newestTag(in: releases)
     else { throw NSError(domain: "Update", code: 2, userInfo: [NSLocalizedDescriptionKey: "No published release is available"]) }
     let current = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0"
@@ -50,7 +50,35 @@ enum UpdateCoordinator {
     return AvailableUpdate(
       version: version,
       command:
-        "task_installer=$(mktemp /private/tmp/cloudmacmonitor-install.XXXXXXXX) && curl --fail --proto '=https' '\(installer)' -o \"$task_installer\" && bash \"$task_installer\" '\(version)' '\(base)' '\(digest)'"
+        "task_installer=$(mktemp /private/tmp/cloudmacmonitor-install.XXXXXXXX) && curl --fail --proto '=https' '\(installer)' -o \"$task_installer\" && bash \"$task_installer\" '\(version)' '\(base)' '\(digest)'",
+      releaseBase: base, checksum: String(digest)
     )
+  }
+  static func install(_ update: AvailableUpdate, installer: URL? = Bundle.main.url(forResource: "install", withExtension: "sh")) async throws {
+    guard let installer else {
+      throw NSError(domain: "Update", code: 4, userInfo: [NSLocalizedDescriptionKey: "The bundled installer is missing"])
+    }
+    try await Task.detached {
+      let root = FileManager.default.temporaryDirectory.appendingPathComponent("cmm-update-" + UUID().uuidString)
+      try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+      defer { try? FileManager.default.removeItem(at: root) }
+      let log = root.appendingPathComponent("install.log")
+      FileManager.default.createFile(atPath: log.path, contents: nil)
+      let output = try FileHandle(forWritingTo: log)
+      defer { try? output.close() }
+      let process = Process()
+      process.executableURL = URL(fileURLWithPath: "/bin/bash")
+      process.arguments = [installer.path, update.version, update.releaseBase, update.checksum]
+      process.environment = ProcessInfo.processInfo.environment.merging(["CMM_INSTALL_GUI": "1", "PATH": "/usr/bin:/bin:/usr/sbin:/sbin"]) { _, new in new }
+      process.standardInput = FileHandle.nullDevice
+      process.standardOutput = output
+      process.standardError = output
+      try process.run()
+      process.waitUntilExit()
+      guard process.terminationStatus == 0 else {
+        let detail = (try? String(contentsOf: log, encoding: .utf8)) ?? ""
+        throw NSError(domain: "Update", code: Int(process.terminationStatus), userInfo: [NSLocalizedDescriptionKey: String(detail.suffix(4096))])
+      }
+    }.value
   }
 }

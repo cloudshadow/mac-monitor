@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-version="${1:-0.1.12}"
+version="${1:-0.1.13}"
 [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Invalid version' >&2; exit 64; }
 node scripts/i18n/generate.mjs
 CMM_VERSION="$version" npm --prefix web run build
@@ -18,6 +18,7 @@ done
 bash scripts/build-icons.sh
 install -m 644 Resources/Brand/AppIcon.icns "$app/Contents/Resources/AppIcon.icns"
 install -m 644 Resources/Control-Info.plist "$app/Contents/Info.plist"
+install -m 644 scripts/install.sh "$app/Contents/Resources/install.sh"
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $version" "$app/Contents/Info.plist" || /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string $version" "$app/Contents/Info.plist"
 cp -R web/dist/. "$app/Contents/Resources/web/"
 cp -R "$binaries/MacMonitor_MonitorControl.bundle" "$app/Contents/Resources/"

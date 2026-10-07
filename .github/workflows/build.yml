@@ -21,10 +21,11 @@ jobs:
       - run: cd web && npx playwright install webkit
       - run: npm --prefix web test -- --config playwright.mobile.config.ts
       - run: python3 scripts/installer-reinstall-test.py
+      - run: python3 scripts/installer-gui-test.py
       - run: python3 scripts/smoke.py
       - run: python3 scripts/port-smoke.py
       - run: python3 scripts/lan-smoke.py
-      - run: bash scripts/package-app.sh 0.1.12
+      - run: bash scripts/package-app.sh 0.1.13
       - uses: actions/upload-artifact@v4
         with:
           name: development-app

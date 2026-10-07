@@ -44,5 +44,9 @@
   "localPortInUse": "本機連接埠 {port} 已被占用，請選擇其他連接埠；目前設定維持生效。",
   "lanPortInUse": "區域網路連接埠 {port} 已被占用，請選擇其他連接埠；本機監控仍可使用。",
   "portBindFailed": "無法監聽連接埠 {port}，請檢查權限或選擇其他連接埠；目前設定維持生效。",
-  "portFallback": "設定的本機連接埠 {configured} 無法使用，暫時使用 {actual}；請選擇可用連接埠並套用。"
+  "portFallback": "設定的本機連接埠 {configured} 無法使用，暫時使用 {actual}；請選擇可用連接埠並套用。",
+  "installUpdate": "安裝更新",
+  "installingUpdate": "正在下載並安裝更新… macOS 可能會要求管理員授權。",
+  "updateInstallFailed": "安裝更新失敗：{reason}",
+  "updateRestartFailed": "更新已安裝，但無法重新開啟應用程式：{reason}。請重新開啟 Mac Monitor。"
 }

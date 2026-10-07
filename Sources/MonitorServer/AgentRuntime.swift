@@ -27,9 +27,9 @@ public final class AgentRuntime: @unchecked Sendable {
     guard geteuid() != 0 else { throw APIError(403, "ordinaryOwnerRequired") }
     self.root = root
     webRootForLAN = webRoot
-    if root == "/Library/Application Support/CloudMacMonitor/data" {
+    if root == InstallationLayout.data {
       let configURL = URL(
-        fileURLWithPath: "/Library/Application Support/CloudMacMonitor/installation.json")
+        fileURLWithPath: InstallationLayout.configuration)
       var info = stat()
       guard lstat(configURL.path, &info) == 0, info.st_uid == 0, info.st_mode & S_IFMT == S_IFREG,
         info.st_mode & 0o022 == 0

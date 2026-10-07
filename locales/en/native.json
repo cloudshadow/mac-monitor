@@ -44,5 +44,9 @@
   "localPortInUse": "Local port {port} is already in use. Choose another port; the current configuration remains active.",
   "lanPortInUse": "LAN port {port} is already in use. Choose another port; local monitoring remains available.",
   "portBindFailed": "Could not listen on port {port}. Check permissions or choose another port; the current configuration remains active.",
-  "portFallback": "Configured local port {configured} is unavailable. Temporarily using {actual}; choose and apply an available port."
+  "portFallback": "Configured local port {configured} is unavailable. Temporarily using {actual}; choose and apply an available port.",
+  "installUpdate": "Install update",
+  "installingUpdate": "Downloading and installing the update… macOS may ask for administrator authorization.",
+  "updateInstallFailed": "Could not install the update: {reason}",
+  "updateRestartFailed": "The update was installed, but the app could not reopen: {reason}. Reopen Mac Monitor."
 }

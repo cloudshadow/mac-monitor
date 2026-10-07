@@ -17,6 +17,7 @@ bash scripts/swift.sh test -j 4
 node --test scripts/i18n/validate.test.mjs
 npm --prefix web test
 python3 scripts/installer-reinstall-test.py
+python3 scripts/installer-gui-test.py
 python3 scripts/smoke.py
 python3 scripts/port-smoke.py
 python3 scripts/lan-smoke.py
@@ -36,9 +37,9 @@ mkdir -m 700 /private/tmp/mac-monitor-dev
 ## Package the app
 
 ```bash
-bash scripts/package-app.sh 0.1.12
-CMM_ARCH=arm64 bash scripts/package-app.sh 0.1.12
-CMM_ARCH=x86_64 bash scripts/package-app.sh 0.1.12
+bash scripts/package-app.sh 0.1.13
+CMM_ARCH=arm64 bash scripts/package-app.sh 0.1.13
+CMM_ARCH=x86_64 bash scripts/package-app.sh 0.1.13
 ```
 
 Packages and checksums are written to `artifacts/`; app bundles are under `artifacts/package/<arch>/`. Cross-compilation does not replace runtime testing on the target architecture.

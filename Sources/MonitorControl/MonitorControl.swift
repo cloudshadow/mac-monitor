@@ -16,6 +16,17 @@ import SwiftUI
   @Published var busy = false
   @Published var update: AvailableUpdate?
   @Published var updateStatus = ""
+  @Published var checkingUpdates = false
+  @Published var installingUpdate = false
+  var relaunching = false
+  var fetchUpdate: @MainActor () async throws -> AvailableUpdate? = { try await UpdateCoordinator.check() }
+  var applyUpdate: @MainActor (AvailableUpdate) async throws -> Void = { try await UpdateCoordinator.install($0) }
+  var reopenUpdatedApp: @MainActor () async throws -> Void = {
+    let configuration = NSWorkspace.OpenConfiguration()
+    configuration.createsNewApplicationInstance = true
+    _ = try await NSWorkspace.shared.openApplication(at: URL(fileURLWithPath: InstallationLayout.launcher), configuration: configuration)
+    NSApp.terminate(nil)
+  }
   private var refreshing = false
   private var controlRevision = 0
   var reportShutdownFailure: (String) -> Void = { message in
@@ -28,7 +39,7 @@ import SwiftUI
   private let socketPath: String, owner: uid_t
   init(socketPath testPath: String? = nil, ownerUid testOwner: uid_t? = nil) {
     serviceConfigurationPath = testPath == nil && !CommandLine.arguments.contains("--data-root")
-      ? InstallationLayout.root + "/installation.json" : nil
+      ? InstallationLayout.configuration : nil
     if let testPath, let testOwner {
       socketPath = testPath
       owner = testOwner
@@ -38,9 +49,9 @@ import SwiftUI
       socketPath = CommandLine.arguments[index + 1] + "/run/control.sock"
       owner = getuid()
     } else {
-      socketPath = "/Library/Application Support/CloudMacMonitor/data/run/control.sock"
+      socketPath = InstallationLayout.data + "/run/control.sock"
       let url = URL(
-        fileURLWithPath: "/Library/Application Support/CloudMacMonitor/installation.json")
+        fileURLWithPath: InstallationLayout.configuration)
       let config = (try? Data(contentsOf: url)).flatMap {
         try? JSONDecoder().decode(JSONValue.self, from: $0)
       }
@@ -117,7 +128,7 @@ import SwiftUI
     maintenance(running ? "stop" : "start")
   }
   func refreshServiceState() {
-    guard let path = serviceConfigurationPath, !inspectingService, !busy else { return }
+    guard let path = serviceConfigurationPath, !inspectingService, !busy, !installingUpdate else { return }
     inspectingService = true
     let revision = serviceRevision
     Task {
@@ -143,7 +154,7 @@ import SwiftUI
       send("status", then: { self.status = $0 })
       return
     }
-    guard !busy, !refreshing else { return }
+    guard !busy, !refreshing, !installingUpdate else { return }
     refreshServiceState()
     refreshing = true
     let revision = controlRevision
@@ -198,19 +209,36 @@ import SwiftUI
     (error as? APIError)?.code ?? "controlUnavailable"
   }
   func checkUpdates() {
-    guard !busy else { return }
-    busy = true
+    guard !checkingUpdates, !installingUpdate else { return }
+    checkingUpdates = true
+    update = nil
+    updateStatus = ""
     Task {
-      error = ""
-      update = nil
-      updateStatus = ""
+      defer { checkingUpdates = false }
       do {
-        update = try await UpdateCoordinator.check()
+        update = try await fetchUpdate()
         if update == nil { updateStatus = NativeKeys.upToDate() }
       } catch {
-        self.error = NativeKeys.updateFailed(reason: error.localizedDescription)
+        updateStatus = NativeKeys.updateFailed(reason: error.localizedDescription)
       }
-      busy = false
+    }
+  }
+  func installUpdate() {
+    guard let update, !busy, !checkingUpdates, !installingUpdate else { return }
+    installingUpdate = true
+    updateStatus = NativeKeys.installingUpdate()
+    Task {
+      defer { installingUpdate = false }
+      do {
+        try await applyUpdate(update)
+        relaunching = true
+        try await reopenUpdatedApp()
+      } catch {
+        updateStatus = relaunching
+          ? NativeKeys.updateRestartFailed(reason: error.localizedDescription)
+          : NativeKeys.updateInstallFailed(reason: error.localizedDescription)
+        relaunching = false
+      }
     }
   }
   func maintenance(_ action: String, openWhenReady: Bool = false) {
@@ -280,7 +308,7 @@ import SwiftUI
       [AEKeyword(kAEQuitAll), AEKeyword(kAEShutDown), AEKeyword(kAERestart), AEKeyword(kAEReallyLogOut)].contains(reason) {
       return .terminateNow
     }
-    guard let model = ControlModel.current else { return .terminateNow }
+    guard let model = ControlModel.current, !model.relaunching else { return .terminateNow }
     model.quit { sender.reply(toApplicationShouldTerminate: $0) }
     return .terminateLater
   }
@@ -395,9 +423,12 @@ struct ControlView: View {
         Text(serviceSummary).font(.caption)
       }
       HStack {
-        Button(NativeKeys.update()) { model.checkUpdates() }
+        Button(NativeKeys.update()) { model.checkUpdates() }.disabled(model.checkingUpdates)
+        if model.checkingUpdates { ProgressView().controlSize(.small).accessibilityLabel(NativeKeys.update()) }
         if let update = model.update {
           Text(update.version)
+          Button(NativeKeys.installUpdate()) { model.installUpdate() }.disabled(model.checkingUpdates)
+          if model.installingUpdate { ProgressView().controlSize(.small).accessibilityLabel(NativeKeys.installUpdate()) }
           Button(NativeKeys.copyCommand()) {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(update.command, forType: .string)
@@ -410,7 +441,7 @@ struct ControlView: View {
       Button(NativeKeys.uninstall(), role: .destructive) { showUninstall = true }
       if !model.error.isEmpty { Text(model.error).foregroundStyle(.red) }
       if model.busy { ProgressView() }
-    }.padding(24).frame(width: 640).disabled(model.busy)
+    }.padding(24).frame(width: 640).disabled(model.busy || model.installingUpdate)
       .onChange(of: model.status["configuredPort"].number, initial: true) { _, value in
         if let value, value > 0 { port = String(Int(value)) }
       }

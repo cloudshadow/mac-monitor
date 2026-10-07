@@ -47,4 +47,8 @@ enum NativeKeys {
     static func lanPortInUse(port: String) -> String { NativeLocalization.text("lanPortInUse", parameters: ["port": port]) }
     static func portBindFailed(port: String) -> String { NativeLocalization.text("portBindFailed", parameters: ["port": port]) }
     static func portFallback(actual: String, configured: String) -> String { NativeLocalization.text("portFallback", parameters: ["actual": actual, "configured": configured]) }
+    static func installUpdate() -> String { NativeLocalization.text("installUpdate", parameters: [:]) }
+    static func installingUpdate() -> String { NativeLocalization.text("installingUpdate", parameters: [:]) }
+    static func updateInstallFailed(reason: String) -> String { NativeLocalization.text("updateInstallFailed", parameters: ["reason": reason]) }
+    static func updateRestartFailed(reason: String) -> String { NativeLocalization.text("updateRestartFailed", parameters: ["reason": reason]) }
 }
